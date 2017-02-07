@@ -26,5 +26,31 @@ AS BEGIN
 		SELECT
 			@Ok = NULL
 	END;
+
+  --  Kike Sierra: 2017-02-07: Permite afectar ajustes de 
+  -- saldos menores inventarios, sin considerar el error de
+  -- 'Costo indicado es menor al minimo aceptable ( 2060 )'
+  IF @Ok = '20600'
+  AND @Modulo = 'INV'
+  AND @Usuario = 'PRODAUT'
+  AND EXISTS
+  (
+    SELECT 
+      i.ID 
+    FROM 
+      Inv i 
+    JOIN Movtipo t ON t.Modulo = 'INV'
+                  AND t.Mov = i.Mov
+    WHERE
+      i.ID = @ID
+    AND t.Clave = 'INV.A'
+    AND i.Concepto = 'Ajuste por saldos menores'
+    AND i.Estatus = 'SINAFECTAR'
+  )
+  BEGIN
+    SELECT
+      @OK = NULL,
+      @OkRef = NULL
+  END 
 	RETURN;
 END;
