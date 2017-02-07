@@ -90,5 +90,24 @@ AS BEGIN
 				@OkRef = NULL
 		END
 	END;
+
+  --Kike Sierra: 2017/02/07: Permite eliminar saldos menores de Inventario,
+  -- sin caer en el error de Cantidad vs Round(Cantidad,@DecimalesEmpresa) ( 20550 xD )
+  IF @Ok = 20550
+  AND @Movtipo = 'INV.A'
+  AND @Estatus = 'SINAFECTAR'
+  AND EXISTS (
+		            SELECT
+			            ISNULL(Observaciones, '')
+		            FROM
+			            Inv
+		            WHERE
+                  ID = @ID
+		            AND Usuario = 'PRODAUT'
+	            )
+  BEGIN
+    SELECT @OK = NULL, @OkRef = NULL
+  END  
+
 	RETURN;
 END;
