@@ -2976,52 +2976,76 @@ SELECT @ValidarDisponible = 1*/
                             END
                         END
                     END
+
                   IF @MovTipo IN ( 'COMS.B', 'COMS.CA', 'COMS.GX' )
-                    AND @AfectarCostos = 1
-                    AND @Costo = 0.0
-                    AND @ArtTipo NOT IN ( 'JUEGO', 'SERVICIO' )
+                  AND @AfectarCostos = 1
+                  AND @Costo = 0.0
+                  AND @ArtTipo NOT IN ( 'JUEGO', 'SERVICIO' )
                     SELECT
                       @Ok = 20100		
+
                   IF @EsTransferencia = 1
                     SELECT
                       @AfectarAlmacen = @AlmacenDestino,
                       @AfectarAlmacenTipo = @AlmacenDestinoTipo
+
                   IF (
                        @EsEntrada = 1
                        OR @EsTransferencia = 1
                        OR @MovTipo = 'COMS.O'
                      )
-                    AND @EsSalida = 0
-                    AND @Ok IS NULL
-                    AND @EstatusNuevo <> 'BORRADOR'
+                  AND @EsSalida = 0
+                  AND @Ok IS NULL
+                  AND @EstatusNuevo <> 'BORRADOR'
+                  BEGIN
+                    IF @AfectarPiezas = 1
                     BEGIN
-                      IF @AfectarPiezas = 1
-                        BEGIN
-                          IF @Costo <> 0.0
-                            SELECT
-                              @Ok = 20140  								
-                        END
+                      IF @Costo <> 0.0
+                        SELECT
+                          @Ok = 20140  								
+                    END ELSE IF (
+                      @AfectarCostos = 1
+                      OR @MovTipo = 'COMS.O'
+                    )
+                    AND @AlmacenTipo <> 'GARANTIAS'
+                    AND @Accion <> 'CANCELAR'
+                    AND @ArtTipo NOT IN ( 'JUEGO', 'SERVICIO' )
+                    BEGIN
+                      IF @Costo = 0.0
+                      AND @MovTipo NOT IN ( 'VTAS.N', 'VTAS.NO', 'VTAS.NR', 'VTAS.FM', 'PROD.E', 'INV.CM' )
+                      AND @CfgInvEntradasSinCosto = 0
+                        SELECT
+                          @Ok = 20100
                       ELSE
-                        IF (
-                             @AfectarCostos = 1
-                             OR @MovTipo = 'COMS.O'
-                           )
-                          AND @AlmacenTipo <> 'GARANTIAS'
-                          AND @Accion <> 'CANCELAR'
-                          AND @ArtTipo NOT IN ( 'JUEGO', 'SERVICIO' )
-                          BEGIN
-                            IF @Costo = 0.0
-                              AND @MovTipo NOT IN ( 'VTAS.N', 'VTAS.NO', 'VTAS.NR', 'VTAS.FM', 'PROD.E', 'INV.CM' )
-                              AND @CfgInvEntradasSinCosto = 0
-                              SELECT
-                                @Ok = 20100
-                            ELSE
-                              IF @Costo < 0.0
-                                AND @MovTipo <> 'INV.TC'
-                                SELECT
-                                  @Ok = 20101									
-                          END
+                        IF @Costo < 0.0
+                          AND @MovTipo <> 'INV.TC'
+                          SELECT
+                            @Ok = 20101									
                     END
+
+                  -- Kike Sierra 2017-02-07: Procedimiento almacenado encargado de extender la validacion
+                  -- sobre el error 20100 ( "Falta Indicar el Costo" )
+                  IF @Ok = 20100
+                  BEGIN
+                    EXEC CUP_SPP_20100
+                      @Empresa,
+                      @Usuario,
+                      @Accion,
+                      @Estatus,
+                      @Modulo,
+                      @ID,
+                      @Mov,
+                      @MovTipo,
+                      @Articulo,
+                      @Subcuenta,
+                      @Renglon,
+                      @RenglonSub,
+                      @RenglonID,
+                      @RenglonTipo,
+                      @Ok OUTPUT,
+                      @OkRef OUTPUT
+                  END
+              END
                   IF (
                        @EsEntrada = 1
                        OR @EsTransferencia = 1
