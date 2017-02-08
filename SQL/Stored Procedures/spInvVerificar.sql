@@ -2883,34 +2883,41 @@ SELECT @ValidarDisponible = 1*/
                                   SELECT
                                     @Disponible = @Disponible + @AplicaReservada
                                   IF ROUND(@Disponible, 4) = 0.0
-                                    BEGIN
-                                      IF @ArtTipoOpcion <> 'NO'
-                                        SELECT
-                                          @Ok = 20040   
-                                      ELSE
-                                        SELECT
-                                          @Ok = 20020
-
-  --Kike Sierra: 24/JUL/2015: SE removio la validacion para la herramienta de eliminar saldos menores en inv
-                                      IF @Ok = 20040
-                                        AND @MovTipo = 'INV.A'
-                                        AND @Usuario = 'PRODAUT'
-                                        AND (
-                                              SELECT
-                                                ISNULL(Observaciones, '')
-                                              FROM
-                                                Inv
-                                              WHERE
-                                                ID = @ID
-                                            ) = 'Ajuste por Saldos Menores'
-                                        AND @Estatus = 'SINAFECTAR'
-                                        SET @Ok = NULL
-  --
-                                    END
-                                  ELSE
-                                    IF ROUND(@Disponible, 4) < ROUND(@Cantidad, 4)
+                                  BEGIN
+                                    IF @ArtTipoOpcion <> 'NO'
+                                      SELECT
+                                        @Ok = 20040   
+                                    ELSE
                                       SELECT
                                         @Ok = 20020
+                              
+                                  END
+                                  ELSE IF ROUND(@Disponible, 4) < ROUND(@Cantidad, 4)
+                                    SELECT
+                                      @Ok = 20020
+
+                                  -- Kike Sierra 2017-02-08: Procedimiento almacenado encargado de extender la validacion
+                                  -- sobre el error 20040 ( "No existe disponible esa opcion" )
+                                  IF @Ok = 20040
+                                  BEGIN
+                                    EXEC CUP_SPP_20040
+                                      @Empresa,
+                                      @Usuario,
+                                      @Accion,
+                                      @Estatus,
+                                      @Modulo,
+                                      @ID,
+                                      @Mov,
+                                      @MovTipo,
+                                      @Articulo,
+                                      @Subcuenta,
+                                      @Renglon,
+                                      @RenglonSub,
+                                      @RenglonID,
+                                      @RenglonTipo,
+                                      @Ok OUTPUT,
+                                      @OkRef OUTPUT
+                                  END
                                 END
                             END
                           IF @Cantidad > @AplicaReservada
