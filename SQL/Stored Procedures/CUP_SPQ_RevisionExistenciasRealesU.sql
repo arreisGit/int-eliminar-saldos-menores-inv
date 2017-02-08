@@ -40,7 +40,6 @@ CREATE PROCEDURE dbo.CUP_SPQ_RevisionExistenciasRealesU
   @Empresa CHAR(5) = NULL,
   @Sucursal INT = NULL,
   @Almacen CHAR(10) = NULL,
-  @Moneda  CHAR(10) = NULL,
   @Articulo CHAR(20) = NULL,
   @Subcuenta VARCHAR(20) = NULL
 AS BEGIN 
@@ -56,7 +55,6 @@ AS BEGIN
     Empresa             CHAR(5) NOT NULL,
     Sucursal            INT NOT NULL,
     Almacen             CHAR(10) NOT NULL,
-    Moneda              CHAR(10) NOT NULL,
     Articulo            CHAR(20) NOT NULL,
     SubCuenta           VARCHAR(20) NOT NULL,
     Existencia          DECIMAL(36,18) NOT NULL,
@@ -64,7 +62,6 @@ AS BEGIN
                   Empresa,
                   Sucursal,
                   Almacen,
-                  Moneda,
                   ARticulo,
                   Subcuenta
                 )
@@ -75,7 +72,6 @@ AS BEGIN
     Empresa,
     Sucursal,
     Almacen,
-    Moneda,
     ARticulo,
     Subcuenta,
     Existencia
@@ -84,7 +80,6 @@ AS BEGIN
     auxU.Empresa,
     auxU.Sucursal,
     Almacen = auxU.Grupo,
-    auxU.Moneda,
     Articulo = auxU.Cuenta,
     SubCuenta = ISNULL(auxU.SubCuenta,''),
     Existencia = SUM(ISNULL(auxU.CargoU,0) - ISNULL(auxU.AbonoU,0))
@@ -95,14 +90,12 @@ AS BEGIN
   AND auxU.Empresa = ISNULL( @Empresa, auxU.Empresa )
   AND auxU.Sucursal = ISNULL( @Sucursal, auxU.Sucursal )
   AND auxU.Grupo = ISNULL( @Almacen, auxU.Grupo )
-  AND auxU.Moneda = ISNULL( @Moneda, auxU.Moneda )
   AND auxU.Cuenta = ISNULL( @Articulo, auxU.Cuenta )
   AND auxU.SubCuenta = ISNULL( @SubCuenta, auxU.SubCuenta )
   GROUP BY 
     auxU.Empresa,
     auxU.Sucursal,
     auxU.Grupo,
-    auxU.Moneda,
     auxU.Cuenta,
     ISNULL(auxU.SubCuenta,'')
 
@@ -115,7 +108,6 @@ AS BEGIN
     Empresa             CHAR(5) NOT NULL,
     Sucursal            INT NOT NULL,
     Almacen             CHAR(10) NOT NULL,
-    Moneda              CHAR(10) NOT NULL,
     Articulo            CHAR(20) NOT NULL,
     SubCuenta           VARCHAR(20) NOT NULL,
     Existencia          DECIMAL(36,18) NOT NULL,
@@ -123,7 +115,6 @@ AS BEGIN
                   Empresa,
                   Sucursal,
                   Almacen,
-                  Moneda,
                   ARticulo,
                   Subcuenta
                 )
@@ -134,7 +125,6 @@ AS BEGIN
     Empresa,
     Sucursal,
     Almacen,
-    Moneda,
     ARticulo,
     Subcuenta,
     Existencia
@@ -143,7 +133,6 @@ AS BEGIN
     AcumU.Empresa,
     AcumU.Sucursal,
     Almacen = AcumU.Grupo,
-    AcumU.Moneda,
     Articulo = AcumU.Cuenta,
     Subcuenta = ISNULL(AcumU.SubCuenta,''),
     Existencia = SUM(ISNULL(AcumU.CargosU,0) - ISNULL(AcumU.AbonosU,0))
@@ -155,14 +144,12 @@ AS BEGIN
   AND AcumU.Empresa = ISNULL( @Empresa, AcumU.Empresa )
   AND AcumU.Sucursal = ISNULL( @Sucursal, AcumU.Sucursal )
   AND AcumU.Grupo = ISNULL( @Almacen, AcumU.Grupo )
-  AND AcumU.Moneda = ISNULL( @Moneda, AcumU.Moneda )
   AND AcumU.Cuenta = ISNULL( @Articulo, AcumU.Cuenta )
   AND AcumU.SubCuenta = ISNULL( @SubCuenta, AcumU.SubCuenta )
   GROUP BY 
     AcumU.Empresa,
     AcumU.Sucursal,
     AcumU.Grupo,
-    AcumU.Moneda,
     AcumU.Cuenta,
     ISNULL(AcumU.SubCuenta,'')
 
@@ -175,7 +162,6 @@ AS BEGIN
     Empresa             CHAR(5) NOT NULL,
     Sucursal            INT NOT NULL,
     Almacen             CHAR(10) NOT NULL,
-    Moneda              CHAR(10) NOT NULL,
     Articulo            CHAR(20) NOT NULL,
     SubCuenta           VARCHAR(20) NOT NULL,
     Existencia          DECIMAL(36,18) NOT NULL,
@@ -183,7 +169,6 @@ AS BEGIN
                   Empresa,
                   Sucursal,
                   Almacen,
-                  Moneda,
                   ARticulo,
                   Subcuenta
                 )
@@ -194,7 +179,6 @@ AS BEGIN
     Empresa,
     Sucursal,
     Almacen,
-    Moneda,
     ARticulo,
     Subcuenta,
     Existencia
@@ -203,7 +187,6 @@ AS BEGIN
     SaldoU.Empresa,
     SaldoU.Sucursal,
     Almacen = SaldoU.Grupo,
-    SaldoU.Moneda,
     Articulo = SaldoU.Cuenta,
     Subcuenta = ISNULL(SaldoU.SubCuenta,''),
     Existencia = SUM(ISNULL(SaldoU.SaldoU,0))
@@ -214,14 +197,12 @@ AS BEGIN
   AND SaldoU.Empresa = ISNULL( @Empresa, SaldoU.Empresa )
   AND SaldoU.Sucursal = ISNULL( @Sucursal, SaldoU.Sucursal )
   AND SaldoU.Grupo = ISNULL( @Almacen, SaldoU.Grupo )
-  AND SaldoU.Moneda = ISNULL( @Moneda, SaldoU.Moneda )
   AND SaldoU.Cuenta = ISNULL( @Articulo, SaldoU.Cuenta )
   AND SaldoU.SubCuenta = ISNULL( @SubCuenta, SaldoU.SubCuenta )
   GROUP BY 
     SaldoU.Empresa,
     SaldoU.Sucursal,
     SaldoU.Grupo,
-    SaldoU.Moneda,
     SaldoU.Cuenta,
     ISNULL(SaldoU.SubCuenta,'')
 
@@ -230,7 +211,6 @@ AS BEGIN
     auxU.Empresa,
     auxU.Sucursal,
     auxU.Almacen,
-    auxU.Moneda,
     auxU.Articulo,
     auxU.SubCuenta,
     Auxu_Existencia = auxU.Existencia,
@@ -244,13 +224,11 @@ AS BEGIN
   JOIN #tmp_CUP_AcumU acumU ON acumU.Empresa = auxU.Empresa
                               AND acumU.Sucursal = auxU.Sucursal
                               AND acumU.Almacen = auxu.Almacen
-                              AND acumU.Moneda = auxU.Moneda
                               AND acumU.Articulo = auxU.Articulo
                               AND acumU.SubCuenta = auxU.SubCuenta
   JOIN #tmp_CUP_SaldoU saldoU ON saldoU.Empresa = auxU.Empresa
                               AND saldoU.Sucursal = auxU.Sucursal
                               AND saldoU.Almacen = auxu.Almacen
-                              AND saldoU.Moneda = auxU.Moneda
                               AND saldoU.Articulo = auxU.Articulo
                               AND saldoU.SubCuenta = auxU.SubCuenta
   -- CALC 
