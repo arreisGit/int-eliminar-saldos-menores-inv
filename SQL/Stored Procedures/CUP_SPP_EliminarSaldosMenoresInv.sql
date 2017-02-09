@@ -22,7 +22,6 @@ BEGIN
   DELETE AcumU WHERE RAMA = 'RESV'
   DELETE SaldoU WHERE RAMA = 'RESV'
 
-
   SELECT 
     @MonedaCosteo = MonedaCosteo,
     @TipoCambio = Mon.TipoCambio
@@ -39,16 +38,16 @@ BEGIN
 
   CREATE TABLE #tmp_CUP_ArtExistencias
   (
-    Empresa             CHAR(5) NOT NULL,
-    Sucursal            INT NOT NULL,
-    Almacen             CHAR(10) NOT NULL,
-    Articulo            CHAR(20) NOT NULL,
-    SubCuenta           VARCHAR(20) NOT NULL,
-    AuxU_Existencia     DECIMAL(36,18) NOT NULL,
-    AuxU_ExistenciaReal DECIMAL(18,5) NOT NULL,
-    AcumU_Existencia     DECIMAL(36,18) NOT NULL,
-    AcumU_ExistenciaReal DECIMAL(18,5) NOT NULL,
-    SaldoU_Existencia     DECIMAL(36,18) NOT NULL,
+    Empresa               CHAR(5) NOT NULL,
+    Sucursal              INT NOT NULL,
+    Almacen               CHAR(10) NOT NULL,
+    Articulo              CHAR(20) NOT NULL,
+    SubCuenta             VARCHAR(20) NOT NULL,
+    AuxU_Existencia       FLOAT NOT NULL,
+    AuxU_ExistenciaReal   DECIMAL(18,5) NOT NULL,
+    AcumU_Existencia      FLOAT NOT NULL,
+    AcumU_ExistenciaReal  DECIMAL(18,5) NOT NULL,
+    SaldoU_Existencia     FLOAT NOT NULL,
     SaldoU_ExistenciaReal DECIMAL(18,5) NOT NULL,
     PRIMARY KEY ( 
                   Empresa,
@@ -110,7 +109,7 @@ BEGIN
     SubCuenta      VARCHAR(20) NOT NULL,
     SerieLote      VARCHAR(50) NOT NULL,
     Propiedades    VARCHAR(20) NULL,
-    Existencia     DECIMAL(36,18) NOT NULL,
+    Existencia     FLOAT  NOT NULL,
     ExistenciaReal DECIMAL(18,5) NOT NULL
     PRIMARY KEY ( 
                   Empresa,
@@ -153,9 +152,9 @@ BEGIN
     Almacen         CHAR(10) NOT NULL,
     Articulo         CHAR(20) NOT NULL,
     SubCuenta        VARCHAR(20) NOT NULL,
-    ExistenciaSU     DECIMAL(36,18) NOT NULL,
+    ExistenciaSU     FLOAT NOT NULL,
     ExistenciaRealSU DECIMAL(18,5) NOT NULL,
-    ExistenciaSL     DECIMAL(36,18) NOT NULL,
+    ExistenciaSL     FLOAT NOT NULL,
     ExistenciaRealSL DECIMAL(18,5) NOT NULL,
     Tipo             VARCHAR(50) NULL,
     PRIMARY KEY ( 
@@ -449,6 +448,7 @@ BEGIN
 
   SELECT * from #tmp_CUP_AdjustesSaldosMenores
 
+
   ROLLBACK
 
 END
@@ -461,4 +461,5 @@ The statement has been terminated.
 
 SELECT * FROM #
 SELECT * from #tmp_CUP_ArtExistenciasSL WHERE SerieLote = 'C-6999-570401-1' AND Articulo = 'A0250480ESN3105H24'
+
 */

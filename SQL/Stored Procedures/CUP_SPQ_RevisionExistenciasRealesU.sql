@@ -56,7 +56,7 @@ AS BEGIN
     Almacen             CHAR(10) NOT NULL,
     Articulo            CHAR(20) NOT NULL,
     SubCuenta           VARCHAR(20) NOT NULL,
-    Existencia          DECIMAL(36,18) NOT NULL,
+    Existencia          FLOAT NOT NULL,
     PRIMARY KEY (
                   Empresa,
                   Sucursal,
@@ -109,7 +109,7 @@ AS BEGIN
     Almacen             CHAR(10) NOT NULL,
     Articulo            CHAR(20) NOT NULL,
     SubCuenta           VARCHAR(20) NOT NULL,
-    Existencia          DECIMAL(36,18) NOT NULL,
+    Existencia          FLOAT NOT NULL,
     PRIMARY KEY (
                   Empresa,
                   Sucursal,
@@ -163,7 +163,7 @@ AS BEGIN
     Almacen             CHAR(10) NOT NULL,
     Articulo            CHAR(20) NOT NULL,
     SubCuenta           VARCHAR(20) NOT NULL,
-    Existencia          DECIMAL(36,18) NOT NULL,
+    Existencia          FLOAT NOT NULL,
     PRIMARY KEY (
                   Empresa,
                   Sucursal,
