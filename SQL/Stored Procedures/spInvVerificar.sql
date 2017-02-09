@@ -3477,7 +3477,7 @@ SELECT @ValidarDisponible = 1*/
                                   ELSE
                                     SELECT
                                       @Ok = 20320   
-					/* Omar chavez 29/sep/2014     para dejar pasar pedido que no verifique la serielote*/ 
+					                        /* Omar chavez 29/sep/2014     para dejar pasar pedido que no verifique la serielote*/ 
                                   IF @Ok = 20320
                                     AND @Modulo = 'VTAS'
                                     AND (
@@ -3511,10 +3511,10 @@ SELECT @ValidarDisponible = 1*/
                                 END
                             END
                         END
-		--Kike SIerra: 19/01/2015: SE modifico el siguiente apartado para "igualar" la logica que utilizaba la version 2800
-		-- para marcar este error. Realmente un segmento grande eeste procedimiento cambiom, pero despues de algunas pruebas
-		--se considera que el error solo debe entrar para el siguiente criterio.
-		 /*COdigo Original: ELSE SELECT @Ok = 20330 */
+		                --Kike SIerra: 19/01/2015: SE modifico el siguiente apartado para "igualar" la logica que utilizaba la version 2800
+		                -- para marcar este error. Realmente un segmento grande eeste procedimiento cambiom, pero despues de algunas pruebas
+		                --se considera que el error solo debe entrar para el siguiente criterio.
+		                 /*COdigo Original: ELSE SELECT @Ok = 20330 */
                       ELSE
                         BEGIN
                           IF (
@@ -3523,11 +3523,34 @@ SELECT @ValidarDisponible = 1*/
                                OR @EsSalida = 1
                                OR @EsTransferencia = 1
                              ) 
-        -- X | Se obtuvo de la validacion del snippet de la 2800
+                            -- X | Se obtuvo de la validacion del snippet de la 2800
                             SELECT
                               @Ok = 20330
+
+                          -- Kike Sierra 2017-02-09: Procedimiento almacenado encargado de extender la validacion
+                          -- sobre el error 20330 ( "No corresponde la cantidad con los números de Serie/Lote" )
+                          IF @Ok = 20330
+                          BEGIN
+                            EXEC CUP_SPP_20330
+                              @Empresa,
+                              @Usuario,
+                              @Accion,
+                              @Estatus,
+                              @Modulo,
+                              @ID,
+                              @Mov,
+                              @MovTipo,
+                              @Articulo,
+                              @Subcuenta,
+                              @Renglon,
+                              @RenglonSub,
+                              @RenglonID,
+                              @RenglonTipo,
+                              @Ok OUTPUT,
+                              @OkRef OUTPUT
+                          END
                         END
-		--
+		                    --
                     END
                 END
               IF @ArtTipo IN ( 'SERIE', 'VIN', 'LOTE', 'PARTIDA' )
