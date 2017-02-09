@@ -391,13 +391,13 @@ AS BEGIN
       SubCuenta = NULLIF(su.Subcuenta,''),
       Costo = CASE -- Costo. ** Basarse en lo que hace el  spVerCosto ** 
                 WHEN a.MonedaCosto = @MonedaCosteo THEN  
-                    ROUND(ISNULL(ac.CostoPromedio,ISNULL(ace.CostoPromedio,0)),4)
+                    ROUND(ISNULL(ac.CostoPromedio, 0),4)
                 ELSE 
                   CASE 
                     WHEN  a.MonedaCosto = 'Pesos' THEN 
-                        ROUND(ISNULL(ac.CostoPromedio,ISNULL(ace.CostoPromedio,0))  / @TipoCambio,4)
+                        ROUND(ISNULL(ac.CostoPromedio, ace.CostoPromedio )  / @TipoCambio,4)
                     ELSE 
-                        ROUND(ISNULL(ac.CostoPromedio,ISNULL(ace.CostoPromedio,0)) / mcosto.TipoCambio,4) *  ROUND(@TipoCambio,4)
+                        ROUND(ISNULL(ac.CostoPromedio, ace.CostoPromedio ) / mcosto.TipoCambio,4) *  ROUND(@TipoCambio,4)
                   END 
               END,  
       Unidad = a.Unidad,
@@ -522,6 +522,13 @@ AS BEGIN
       LEFT JOIN MensajeLista m ON m.Mensaje = ajm.OK
 
       SELECT * from #tmp_CUP_SaldosMenoresSU
+
+      -- Detalle Ajustes
+      SELECT
+        *
+      from 
+        #tmp_CUP_AdjustesSaldosMenores ajm
+      JOIN InvD d ON d.ID = ajm.ID
 
     END
 
