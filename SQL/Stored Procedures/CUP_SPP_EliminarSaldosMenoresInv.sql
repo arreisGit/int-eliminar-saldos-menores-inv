@@ -364,9 +364,28 @@ AS BEGIN
     )  
     SELECT 
       ajm.ID, 
-      Renglon = CAST(2048 * ROW_NUMBER() OVER (ORDER BY ajm.ID, su.Articulo,su.Subcuenta) AS FLOAT),  --(de 2048 en 2048)
-      RenglonSub= ROW_NUMBER() OVER (PARTITION BY ajm.ID, su.Articulo, su.Subcuenta ORDER BY su.Subcuenta) - 1, 
-      RenglonID = ROW_NUMBER() OVER (ORDER BY ajm.ID, su.Articulo, su.Subcuenta),                        
+      Renglon = CAST(   2048 
+                      * ROW_NUMBER() OVER (
+                                            ORDER BY
+                                              ajm.ID,
+                                              su.Articulo,
+                                              su.Subcuenta
+                                           ) 
+                     AS FLOAT),  --(de 2048 en 2048)
+      RenglonSub= ROW_NUMBER() OVER (
+                                      PARTITION BY
+                                        ajm.ID,
+                                        su.Articulo,
+                                        su.Subcuenta 
+                                      ORDER BY
+                                        su.Subcuenta
+                                      ) - 1, 
+      RenglonID = ROW_NUMBER() OVER (
+                                      ORDER BY
+                                        ajm.ID,
+                                        su.Articulo,
+                                        su.Subcuenta
+                                     ),                        
       RenglonTipo = dbo.fnRenglonTipo(a.Tipo),                                                
       Cantidad =  su.ExistenciaSU * -1 , 
       Almacen = ajm.Almacen, 
