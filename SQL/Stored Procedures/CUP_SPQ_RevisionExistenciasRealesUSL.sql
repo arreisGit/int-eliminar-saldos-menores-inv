@@ -52,6 +52,7 @@ AS BEGIN
     sl.Articulo,
     sl.SubCuenta,
     sl.SerieLote,
+    sl.Propiedades,
     Existencia = ISNULL(sl.Existencia,0),
     ExistenciaReal = ISNULL(calc.ExistenciaReal,0)
   FROM 

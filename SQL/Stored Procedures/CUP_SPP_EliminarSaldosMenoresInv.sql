@@ -6,7 +6,7 @@ DECLARE
   @Articulo  CHAR(20)    = 'IP0625600NA304A1-A',
   @SubCuenta VARCHAR(20) = 'L6096M4'
 BEGIN
-
+  
   DECLARE
     @TipoCambio FLOAT,
     @MonedaCosteo VARCHAR(10),
@@ -109,6 +109,7 @@ BEGIN
     Articulo       CHAR(20) NOT NULL,
     SubCuenta      VARCHAR(20) NOT NULL,
     SerieLote      VARCHAR(50) NOT NULL,
+    Propiedades    VARCHAR(20) NULL,
     Existencia     DECIMAL(36,18) NOT NULL,
     ExistenciaReal DECIMAL(18,5) NOT NULL
     PRIMARY KEY ( 
@@ -129,6 +130,7 @@ BEGIN
     Articulo,
     Subcuenta,
     SerieLote,
+    Propiedades,
     Existencia,
     ExistenciaReal
   )
@@ -323,7 +325,7 @@ BEGIN
     RenglonSub= ROW_NUMBER() OVER (PARTITION BY ajm.ID, su.Articulo, su.Subcuenta ORDER BY su.Subcuenta) - 1, 
     RenglonID = ROW_NUMBER() OVER (ORDER BY ajm.ID, su.Articulo, su.Subcuenta),                        
     RenglonTipo = dbo.fnRenglonTipo(a.Tipo),                                                
-    Cantidad =  su.ExistenciaSU, 
+    Cantidad =  su.ExistenciaSU * -1 , 
     Almacen = ajm.Almacen, 
     Articulo = su.Articulo, 
     SubCuenta = NULLIF(su.Subcuenta,''),
@@ -387,8 +389,8 @@ BEGIN
     d.Articulo,
     Subcuenta = ISNULL(d.Subcuenta,''),
     sl.SerieLote,
-    sl.ExistenciaReal,
-    NULL, -- ??
+    sl.Existencia,
+    sl.Propiedades,
     i.Sucursal
   FROM
     #tmp_CUP_AdjustesSaldosMenores ajm
