@@ -80,8 +80,7 @@ AS BEGIN
     WHERE 
       e.Empresa = @Empresa
 
-    -- 1 ) OBtenemos las Existencias sin considerar SerieLote,
-    --  ( de saldoU)
+    -- Obtener las Existencias sin considerar SerieLote ( saldoU )
     IF OBJECT_ID('tempdb..#tmp_CUP_ArtExistencias') IS NOT NULL 
       DROP TABLE #tmp_CUP_ArtExistencias;
 
@@ -128,7 +127,7 @@ AS BEGIN
       @Articulo,
       @Subcuenta
 
-    -- 2) Todos los articulos con saldoU en 0 deberian tener su serie lote en 0 tambien
+    -- Todos los articulos con saldoU en 0 deberian tener suserie lote en 0 tambien
     UPDATE sl
     SET 
       sl.Existencia = 0,
@@ -144,8 +143,7 @@ AS BEGIN
       ISNULL(su.SaldoU_Existencia,0) = 0 
     AND ISNULL(sl.Existencia,0) <> 0
 
-
-    -- 2 ) OBtenemos las Existencia SerieLote,
+    -- OBtener las existencia SerieLote,
     IF OBJECT_ID('tempdb..#tmp_CUP_ArtExistenciasSL') IS NOT NULL 
       DROP TABLE #tmp_CUP_ArtExistenciasSL;
 
@@ -189,7 +187,7 @@ AS BEGIN
       @Articulo,
       @Subcuenta
 
-    -- 3 ) IDentificamos los saldos menors SU, ya que de entrada 
+    -- Identifica los saldos menors SU, ya que de entrada 
     -- este tipo es mas facil de limpiar 
     IF OBJECT_ID('tempdb..#tmp_CUP_SaldosMenoresSU') IS NOT NULL 
       DROP TABLE #tmp_CUP_SaldosMenoresSU;
@@ -466,7 +464,7 @@ AS BEGIN
     WHERE
       d.RenglonTipo IN ('S','L')
 
-    -- Afecta los Ajustes Menores
+    -- Afecta los Ajustes Menores.
     DECLARE cr_AjustesMenores CURSOR LOCAL FAST_FORWARD FOR 
     SELECT 
       ID 
@@ -479,11 +477,11 @@ AS BEGIN
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
+
       SELECT 
         @OK = NULL,
         @OKRef = NULL
 
-      -- Afecta el ajuste recien creado y guardamos el resultado.
       EXEC spAfectar
         @Modulo = 'INV', 
         @ID = @r_AjusteID ,

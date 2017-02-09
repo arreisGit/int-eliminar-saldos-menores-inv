@@ -3477,37 +3477,47 @@ SELECT @ValidarDisponible = 1*/
                                   ELSE
                                     SELECT
                                       @Ok = 20320   
-					                        /* Omar chavez 29/sep/2014     para dejar pasar pedido que no verifique la serielote*/ 
-                                  IF @Ok = 20320
-                                    AND @Modulo = 'VTAS'
-                                    AND (
-                                          SELECT
-                                            Mov
-                                          FROM
-                                            Venta
-                                          WHERE
-                                            ID = @ID
-                                        ) = 'Pedido'
-                                    BEGIN
+					                        
+                                  IF @Ok IS NOT NULL
+                                  BEGIN
+                                    IF @Modulo = 'VTAS'
+                                      AND @OrigenTipo = 'VMOS'
                                       SELECT
                                         @Ok = NULL
-                                    END  
-                                  IF @Ok IS NOT NULL
-                                    BEGIN
-                                      IF @Modulo = 'VTAS'
-                                        AND @OrigenTipo = 'VMOS'
-                                        SELECT
-                                          @Ok = NULL
-                                      IF @MovTipo IN ( 'VTAS.C', 'VTAS.P' )
-                                        AND @CfgVentaRefSerieLotePedidos = 0
-                                        SELECT
-                                          @Ok = NULL
-                                      IF @Ok = 20320
-                                        AND @MovTipo = 'VTAS.F'
-                                        AND @AplicaMovTipo = 'VTAS.R'
-                                        SELECT
-                                          @Ok = NULL
-                                    END
+                                    IF @MovTipo IN ( 'VTAS.C', 'VTAS.P' )
+                                      AND @CfgVentaRefSerieLotePedidos = 0
+                                      SELECT
+                                        @Ok = NULL
+                                    IF @Ok = 20320
+                                      AND @MovTipo = 'VTAS.F'
+                                      AND @AplicaMovTipo = 'VTAS.R'
+                                      SELECT
+                                        @Ok = NULL
+                                  END
+
+                                  -- Kike Sierra 2017-02-09: Procedimiento almacenado encargado de extender la validacion
+                                  -- sobre el error 20320 ( "Falta indicar los números de Serie/Lote" )
+                                  IF @Ok = 20320
+                                  BEGIN
+                                    EXEC CUP_SPP_20320
+                                      @Empresa,
+                                      @Usuario,
+                                      @Accion,
+                                      @Estatus,
+                                      @Modulo,
+                                      @ID,
+                                      @Mov,
+                                      @MovTipo,
+                                      @Articulo,
+                                      @Subcuenta,
+                                      @Renglon,
+                                      @RenglonSub,
+                                      @RenglonID,
+                                      @RenglonTipo,
+                                      @Ok OUTPUT,
+                                      @OkRef OUTPUT
+                                  END
+		                            --
                                 END
                             END
                         END
@@ -3549,8 +3559,8 @@ SELECT @ValidarDisponible = 1*/
                               @Ok OUTPUT,
                               @OkRef OUTPUT
                           END
+                          --
                         END
-		                    --
                     END
                 END
               IF @ArtTipo IN ( 'SERIE', 'VIN', 'LOTE', 'PARTIDA' )
