@@ -14,7 +14,7 @@ GO
 
 /* =============================================
   Created by:    Enrique Sierra Gtez
-  Creation Date: 2017-02-07
+  Creation Date: 2017-02-09
 
   Description: Procedimiento almacenado encargado de controlar
   la logica de la eliminacion de saldos menores de Inventario.
@@ -24,7 +24,8 @@ GO
             @Sucursal = NULL,
             @Almacen = NULL,
             @Articulo = NULL,
-            @Subcuenta = NULL
+            @Subcuenta = NULL,
+            @EnSilencio = 0
 
   ** Nota: Cuando se quiera filtrar especificamente por un
   articulo sin subcuenta, se debe usar @Subcuenta = '' y no 
@@ -39,7 +40,8 @@ CREATE PROCEDURE dbo.CUP_SPP_EliminarSaldosMenoresInv
   @Sucursal INT = NULL,
   @Almacen CHAR(10) = NULL,
   @Articulo CHAR(20) = NULL,
-  @Subcuenta VARCHAR(20) = NULL
+  @Subcuenta VARCHAR(20) = NULL,
+  @EnSilencio BIT = 1
 AS BEGIN 
 
   DECLARE
@@ -486,6 +488,25 @@ AS BEGIN
     CLOSE cr_AjustesMenores
 
     DEALLOCATE cr_AjustesMenores
+
+
+    IF ISNULL(@EnSilencio,0) = 0
+    BEGIN
+
+      SELECT
+        ajm.ID,
+        ajm.Almacen,
+        ajm.Tipo,
+        ajm.Ok,
+        ajm.OkRef,
+        m.Descripcion
+      FROM
+        #tmp_CUP_AdjustesSaldosMenores ajm
+      LEFT JOIN MensajeLista m ON m.Mensaje = ajm.OK
+
+      SELECT * from #tmp_CUP_SaldosMenoresSU
+
+    END
 
     -- Libera el bloqueo del procedimiento
     EXECUTE sp_releaseapplock @Resource = @LockName
