@@ -24,7 +24,6 @@ GO
               @Empresa = NULL,
               @Sucursal = NULL,
               @Almacen = NULL,
-              @Moneda  = NULL,
               @Articulo = NULL,
               @Subcuenta = NULL
 
