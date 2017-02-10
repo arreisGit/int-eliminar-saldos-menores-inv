@@ -4,10 +4,10 @@ GO
 
 IF EXISTS (SELECT * 
 		   FROM SYSOBJECTS 
-		   WHERE ID = OBJECT_ID('dbo.CUP_SPQ_RevisionExistenciasRealesUSL') AND 
+		   WHERE ID = OBJECT_ID('dbo.CUP_SPQ_RevisionExistenciasRealesSL') AND 
 				 TYPE = 'P')
 BEGIN
-  DROP PROCEDURE dbo.CUP_SPQ_RevisionExistenciasRealesUSL
+  DROP PROCEDURE dbo.CUP_SPQ_RevisionExistenciasRealesSL
 END	
 
 GO
@@ -20,7 +20,7 @@ GO
   registradas en Intelisis, incluida la "real" 
   que es aquella truncada a 4 decimales.
  
-  Example: EXEC CUP_SPQ_RevisionExistenciasRealesUSL 
+  Example: EXEC CUP_SPQ_RevisionExistenciasRealesSL 
             @Empresa = NULL,
             @Sucursal = NULL,
             @Almacen = NULL,
