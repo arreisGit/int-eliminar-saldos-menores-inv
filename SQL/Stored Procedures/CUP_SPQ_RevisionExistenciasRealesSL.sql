@@ -72,4 +72,9 @@ AS BEGIN
   ) calc
   WHERE 
     sl.Existencia <> 0
+  AND sl.Empresa = ISNULL( @Empresa, sl.Empresa )
+  AND sl.Sucursal = ISNULL( @Sucursal, sl.Sucursal )
+  AND sl.Almacen = ISNULL( @Almacen, sl.Almacen )
+  AND sl.Articulo = ISNULL( @Articulo, sl.Articulo )
+  AND ISNULL(sl.SubCuenta,'')  = ISNULL( @SubCuenta, sl.SubCuenta )
 END
