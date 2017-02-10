@@ -51,11 +51,8 @@ AS BEGIN
     @LockName NVARCHAR(255) = 'CUP_Herramienta_Eliminacion_Saldos_Menores_Inv',
     @TipoCambio FLOAT,
     @MonedaCosteo VARCHAR(10),
-    @Ok INT,
-    @OkRef VARCHAR(255),
     @ProcesoID INT = 13, -- Este es el ID que identifica el tipo de proceso definido en CUP_Procesos
-    @ID INT,
-    @r_AjusteID INT
+    @ID INT
 
   SET NOCOUNT ON;
 
@@ -306,7 +303,7 @@ AS BEGIN
     (
       SELECT Escenario 
       FROM #tmp_CUP_SaldosMenoresSU
-      WHERE Escenario <> 0;
+      WHERE Escenario <> 0
     )
     BEGIN
 
@@ -320,56 +317,11 @@ AS BEGIN
       -- deberiamos esperar problemas o procesos especiales.
       EXEC CUP_SPI_EliminarSaldosMenoresInv_Seguros @ProcesoID, @ID, @MonedaCosteo, @TipoCambio
 
-      -- Afecta los Ajustes Menores.
-      DECLARE cr_AjustesMenores CURSOR LOCAL FAST_FORWARD FOR 
-      SELECT 
-        i.ID 
-      FROM 
-        CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
-      JOIN Inv i ON i.ID = ajm.ModuloID
-      WHERE 
-        ajm.Id = @ID 
-      AND ajm.Modulo = 'INV'
-
-      OPEN cr_AjustesMenores
-
-      FETCH NEXT FROM cr_AjustesMenores INTO @r_AjusteID
-
-      WHILE @@FETCH_STATUS = 0
-      BEGIN
-
-        SELECT 
-          @OK = NULL,
-          @OKRef = NULL
-
-        EXEC spAfectar
-          @Modulo = 'INV', 
-          @ID = @r_AjusteID ,
-          @Accion = 'AFECTAR',
-          @Base = 'TODO',
-          @GenerarMov =NULL, 
-          @Usuario = 'PRODAUT',
-          @SincroFinal = 0, 
-          @EnSilencio = 1,
-          @OK = @OK OUTPUT,
-          @OkRef = @OkRef OUTPUT
-
-        ---- Apartado para eliminar renglones con el problema del costeo.
-        --WHILE @Ok = 20101
-        --  EXEC CUP_SPP_EliminaSMInv_RemueveArtProblemaCosto
-        --    @ID = @r_AjusteID,
-        --    @Ok = @OK INT OUTPUT,
-        --    @OkREf = @OkRef INT OUTPUT
-        --
-
-        FETCH NEXT FROM cr_AjustesMenores INTO @r_AjusteID
-      END
-
-      CLOSE cr_AjustesMenores
-
-      DEALLOCATE cr_AjustesMenores
+      -- Afecta los Ajustes Menores generados por este proceso.
+      EXEC CUP_SPP_EliminarSaldosMenoresInv_AfectarAjustes @ID
 
 
+      -- Reporta el resultado del proceso.
       IF ISNULL(@EnSilencio,0) = 0
       BEGIN
 
