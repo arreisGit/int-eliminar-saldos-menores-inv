@@ -54,3 +54,12 @@ INCLUDE (
            Modulo,
            ModuloId
         )
+
+
+CREATE NONCLUSTERED INDEX [IX_CUP_EliminarSaldosMenoresInv_AjustesGenerados_Modulo_ModuloID]
+ON [dbo].[CUP_EliminarSaldosMenoresInv_AjustesGenerados] ( Modulo, ModuloID  )
+INCLUDE ( 
+           RID,
+           ID,
+           Escenario
+        )
