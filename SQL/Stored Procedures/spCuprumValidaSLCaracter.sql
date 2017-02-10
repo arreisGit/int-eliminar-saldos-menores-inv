@@ -1,11 +1,12 @@
-USE [Cuprum]
+USE [Cuprum];
 GO
 
 /****** Object:  StoredProcedure [dbo].[spCuprumValidaSLCaracter]    Script Date: 10/02/2017 05:04:12 p.m. ******/
-SET ANSI_NULLS ON
+
+SET ANSI_NULLS ON;
 GO
 
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
 
 /*
@@ -17,161 +18,228 @@ GO
 	select @Ok, @OkRef
 */
 
-ALTER PROCEDURE [dbo].[spCuprumValidaSLCaracter]  @ID Int, @Modulo Varchar(20),@Ok  int = NULL OUTPUT, @OkRef    varchar(255) = NULL OUTPUT                       
-   
-AS      
-BEGIN
-Declare @TotalSeries    Int,
-        @MaxRegistros   Int,
-        @RegNum         Int,
-        @Serielote      Varchar(255),
-        @TextoValido    Varchar(255), 
-        @Largo          Int,
-        @PosicionActual Int,  
-        @Contador       Int,
-        @Caracter       Varchar(1),
-        @NovalidosNum   Int      
-        
-Select @TotalSeries=Count(*)
-From   SerieloteMov
-Where  Modulo=@Modulo
-And    ID=@ID
+ALTER PROCEDURE [dbo].[spCuprumValidaSLCaracter]
+	@ID     INT,
+	@Modulo VARCHAR(20),
+	@Ok     INT          = NULL OUTPUT,
+	@OkRef  VARCHAR(255) = NULL OUTPUT
+AS BEGIN
+	DECLARE
+		@TotalSeries    INT,
+		@MaxRegistros   INT,
+		@RegNum         INT,
+		@Serielote      VARCHAR(255),
+		@TextoValido    VARCHAR(255),
+		@Largo          INT,
+		@PosicionActual INT,
+		@Contador       INT,
+		@Caracter       VARCHAR(1),
+		@NovalidosNum   INT,
+		@CUP_Origen     INT;
 
-IF @TotalSeries<>0
-Begin
-	--------------------------------- Texto Valido -----------------------------------------
-	Select @TextoValido='-/qwertyuiopasdfghjklñzxcvbnmQWERTYUIOPASDFGHJKLÑZXCVBNM1234567890'
+	SELECT
+		@TotalSeries = COUNT(*)
+	FROM
+		SerieloteMov
+	WHERE
+    Modulo = @Modulo
+	AND ID = @ID;
 
-	Select @Largo=Len(@TextoValido),@Contador=1
-	Create Table #ListaCaracteresValidos(Caracter varchar(1) Not null,CodigoAscii int null)
+	IF @Modulo = 'INV'
+	BEGIN
+		SELECT
+			@CUP_Origen = CUP_Origen
+		FROM
+			Inv
+		WHERE
+      ID = @ID;
+	END;
 
-	WHILE @Contador<=@Largo
-	Begin 
-		Select @Caracter=Substring(@TextoValido,@Contador,1)
-	    
-		Insert into #ListaCaracteresValidos(Caracter,CodigoAscii)
-		Select @Caracter, ASCII (@Caracter)
-	    
-		Select @Contador=@Contador+1
-End
-----------------------------------------------------------------------------------------
+	IF @TotalSeries <> 0
+  AND @CUP_Origen NOT IN (13) -- Eliminar Saldos Menores Inv
+	BEGIN
+		--------------------------------- Texto Valido -----------------------------------------
+		SELECT
+			@TextoValido = '-/qwertyuiopasdfghjklñzxcvbnmQWERTYUIOPASDFGHJKLÑZXCVBNM1234567890';
 
+		SELECT
+			@Largo = LEN(@TextoValido),
+			@Contador = 1;
 
-Create Table #ListaRevisaSerieLote(Orden     Int IDENTITY(1,1) NOT NULL,
-                                   RenglonID Int, 
-                                   Articulo  Varchar(50) not null, 
-                                   Subcuenta Varchar(50) null,
-                                   Serielote Varchar(255)not null,
-                                   Error     Int         Null)
-                                      
-Insert into #ListaRevisaSerieLote(RenglonID, 
-                                  Articulo, 
-                                  Subcuenta,
-                                  Serielote)
-                                    
-Select RenglonID,
-       Articulo,
-       Subcuenta,
-       Serielote
-From   SerieloteMov
-Where  Modulo=@Modulo
-And    ID=@ID
---Kike Sierra: 19/01/2015: Control de excepciones. 
---AND Serielote not in ('c-6186-07k4h2b  cal')
---and SerieLote NOT in ('IPC-6934-01H0B2 CBA')
+		CREATE TABLE #ListaCaracteresValidos
+		(
+			Caracter    VARCHAR(1) NOT NULL,
+			CodigoAscii INT NULL
+		);
 
-Select @RegNum=Min(Orden)
-From   #ListaRevisaSerieLote
+		WHILE @Contador <= @Largo
+		BEGIN
+			SELECT
+				@Caracter = SUBSTRING(@TextoValido, @Contador, 1);
 
+			INSERT INTO #ListaCaracteresValidos
+			(
+				Caracter,
+				CodigoAscii
+			)
+			SELECT
+				@Caracter,
+				ASCII(@Caracter);
 
-Select @MaxRegistros=max(Orden)
-From   #ListaRevisaSerieLote
+			SELECT
+				@Contador = @Contador + 1;
+		END;
+		----------------------------------------------------------------------------------------
 
+		CREATE TABLE #ListaRevisaSerieLote
+		(
+			Orden     INT IDENTITY(1, 1) NOT NULL,
+			RenglonID INT,
+			Articulo  VARCHAR(50) NOT NULL,
+			Subcuenta VARCHAR(50) NULL,
+			Serielote VARCHAR(255) NOT NULL,
+			Error     INT NULL
+		);
 
-Create Table #ListaCaracteres(Orden Int,Caracter varchar(1) Not null,CodigoAscii int null)
+		INSERT INTO #ListaRevisaSerieLote
+		(
+			RenglonID,
+			Articulo,
+			Subcuenta,
+			Serielote
+		)
+		SELECT
+			RenglonID,
+			Articulo,
+			Subcuenta,
+			Serielote
+		FROM
+			SerieloteMov
+		WHERE
+      Modulo = @Modulo
+		AND ID = @ID;
 
-------------------- Comienza a analizar la serielote -----------------------------------
-WHILE @RegNum<=@MaxRegistros
-Begin 
+		SELECT
+			@RegNum = MIN(Orden)
+		FROM
+			#ListaRevisaSerieLote;
 
-    Select @Serielote=Serielote
-    From   #ListaRevisaSerieLote
-    Where  Orden=@RegNum
+		SELECT
+			@MaxRegistros = MAX(Orden)
+		FROM
+			#ListaRevisaSerieLote;
 
-    ----------------------- Inicio Descompone Serielote --------------------------
-    Select @Largo=Len(@Serielote),@Contador=1
+		CREATE TABLE #ListaCaracteres
+		(
+			Orden       INT,
+			Caracter    VARCHAR(1) NOT NULL,
+			CodigoAscii INT NULL
+		);
 
+		------------------- Comienza a analizar la serielote -----------------------------------
+		WHILE @RegNum <= @MaxRegistros
+		BEGIN
 
-    WHILE @Contador<=@Largo
-    Begin 
-    Select @Caracter=Substring(@Serielote,@Contador,1)
-    
-    Insert into #ListaCaracteres(Orden,Caracter,CodigoAscii)
-    Select @RegNum,@Caracter, ASCII (@Caracter)
-    
-    Select @Contador=@Contador+1
-    
-    End
-    
+			SELECT
+				@Serielote = Serielote
+			FROM
+				#ListaRevisaSerieLote
+			WHERE
+        Orden = @RegNum;
 
-    Select @NovalidosNum=COUNT(*)
-    From   #ListaCaracteres
-    Where  Caracter not in(Select Caracter
-                           From  #ListaCaracteresValidos)
-    And    Orden=@RegNum                        
+			----------------------- Inicio Descompone Serielote --------------------------
+			SELECT
+				@Largo = LEN(@Serielote),
+				@Contador = 1;
 
-    IF @NovalidosNum<>0
-    Begin
-       Update #ListaRevisaSerieLote Set  Error=@NovalidosNum Where Orden=@RegNum 
-    End  
+			WHILE @Contador <= @Largo
+			BEGIN
+				SELECT
+					@Caracter = SUBSTRING(@Serielote, @Contador, 1);
 
-        IF @NovalidosNum=0
-    Begin
-       Update #ListaRevisaSerieLote Set  Error=0 Where Orden=@RegNum 
-    End  
+				INSERT INTO #ListaCaracteres
+				(
+					Orden,
+					Caracter,
+					CodigoAscii
+				)
+				SELECT
+					@RegNum,
+					@Caracter,
+					ASCII(@Caracter);
 
-    ----------------------- Fin  Descompone Serielote   --------------------------
-    
-    Select @RegNum=@RegNum+1
-End
-------------------- Fin analizar la serielote -----------------------------------
+				SELECT
+					@Contador = @Contador + 1;
 
+			END;
 
- Select @NovalidosNum=Count(*)
- From   #ListaRevisaSerieLote
- Where  Error<>0
- 
- 
- IF @NovalidosNum<>0
- Begin
- 
-	--Kike Sierra 23/01/2015: Se modifico el mensaje de error.
-   Select top 1
-          @OkRef='Existen Caracteres Inválidos en alguna de las SeriesLote capturadas.'
-				+'<BR>' +'Los únicos caracteres que pueden ser usados son:'
-				+' ' + '[A-Z][0-9][-][/]'
-				+'<BR><BR>'
-				+'Articulo: '+Ltrim(Rtrim(Articulo))+' '+Ltrim(Rtrim(Subcuenta))+' Serielote: '+Ltrim(Rtrim(Serielote))
-   From   #ListaRevisaSerieLote
-   Where  Error<>0
-   Order By Orden
-   
-   Select @Ok=800090   
- End 
+			SELECT
+				@NovalidosNum = COUNT(*)
+			FROM
+				#ListaCaracteres
+			WHERE
+        Caracter NOT IN (
+				                  SELECT
+					                  Caracter
+				                  FROM
+					                  #ListaCaracteresValidos
+			                  )
+			AND Orden = @RegNum;
 
-Drop table #ListaRevisaSerieLote
-Drop table #ListaCaracteresValidos
-Drop table #ListaCaracteres
+			IF @NovalidosNum <> 0
+			BEGIN
+				UPDATE #ListaRevisaSerieLote
+				SET
+					Error = @NovalidosNum
+				WHERE
+					Orden = @RegNum;
+			END;
 
+			IF @NovalidosNum = 0
+			BEGIN
+				UPDATE #ListaRevisaSerieLote
+				SET
+					Error = 0
+				WHERE
+					Orden = @RegNum;
+			END;
 
-End 
+			----------------------- Fin  Descompone Serielote   --------------------------
 
-Return
-End 
+			SELECT
+				@RegNum = @RegNum + 1;
+		END;
+		------------------- Fin analizar la serielote -----------------------------------
 
+		SELECT
+			@NovalidosNum = COUNT(*)
+		FROM
+			#ListaRevisaSerieLote
+		WHERE
+      Error <> 0;
 
+		IF @NovalidosNum <> 0
+		BEGIN
 
+			--Kike Sierra 23/01/2015: Se modifico el mensaje de error.
+			SELECT TOP 1
+				@OkRef = 'Existen Caracteres Inválidos en alguna de las SeriesLote capturadas.'+'<BR>'+'Los únicos caracteres que pueden ser usados son:'+' '+'[A-Z][0-9][-][/]'+'<BR><BR>'+'Articulo: '+LTRIM(RTRIM(Articulo))+' '+LTRIM(RTRIM(Subcuenta))+' Serielote: '+LTRIM(RTRIM(Serielote))
+			FROM
+				#ListaRevisaSerieLote
+			WHERE
+        Error <> 0
+			ORDER BY
+				Orden;
 
+			SELECT
+				@Ok = 800090;
+		END;
 
-GO
+		DROP TABLE #ListaRevisaSerieLote;
+		DROP TABLE #ListaCaracteresValidos;
+		DROP TABLE #ListaCaracteres;
 
+	END;
+
+	RETURN;
+END;
