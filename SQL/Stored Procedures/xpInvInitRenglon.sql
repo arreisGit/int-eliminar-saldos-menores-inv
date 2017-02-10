@@ -63,51 +63,57 @@ ALTER PROCEDURE [dbo].[xpInvInitRenglon]
 AS BEGIN
 
 	DECLARE
-		@CantidadNegativa BIT;
+		@CantidadNegativa BIT,
+    @CUP_Origen INT
 
-	/* MK: Corrige el error del sistema al no dejar afectar movimiento con clave de afectacion INV.CM donde el campo DetalleTipo <> 'SALIDA' y la Cantidad < 0.0. */
-	IF @Cantidad < 0
-	BEGIN
-		SELECT
-			@CantidadNegativa = 1
-	END;
-
-	IF(@CantidadNegativa = 1
-	OR (    
-          @EsEntrada = 1
-			AND @EsSalida = 0)
-      )
-	AND @MovTipo = 'INV.CM'
-	AND UPPER(@DetalleTipo) <> 'SALIDA'
-	AND @ArtTipo <> 'SERVICIO'
-	AND @FacturarVtasMostrador = 0
-	AND @Accion <> 'CANCELAR'
-	BEGIN
-		IF @Ok = 20010
-		BEGIN
-			SELECT
-				@Ok = NULL,
-				@OkRef = NULL
-		END
-	END;
-
-  --Kike Sierra: 2017/02/07: Permite eliminar saldos menores de Inventario,
-  -- sin caer en el error de Cantidad vs Round(Cantidad,@DecimalesEmpresa) ( 20550 xD )
-  IF @Ok = 20550
-  AND @Movtipo = 'INV.A'
-  AND @Estatus = 'SINAFECTAR'
-  AND EXISTS (
-		            SELECT
-			            ISNULL(Observaciones, '')
-		            FROM
-			            Inv
-		            WHERE
-                  ID = @ID
-		            AND Usuario = 'PRODAUT'
-	            )
+  IF @Modulo ='INV'
   BEGIN
-    SELECT @OK = NULL, @OkRef = NULL
-  END  
+
+    SELECT 
+      @CUP_Origen = CUP_Origen
+    FROM 
+      Inv i 
+    WHERE 
+      i.ID = @ID
+
+    /* MK: Corrige el error del sistema al no dejar afectar movimiento con clave de afectacion INV.CM 
+    donde el campo DetalleTipo <> 'SALIDA' y la Cantidad < 0.0. */
+	  IF @Cantidad < 0
+	  BEGIN
+		  SELECT
+			  @CantidadNegativa = 1
+	  END;
+    
+	  IF(@CantidadNegativa = 1
+	  OR (    
+            @EsEntrada = 1
+			  AND @EsSalida = 0)
+        )
+	  AND @MovTipo = 'INV.CM'
+	  AND UPPER(@DetalleTipo) <> 'SALIDA'
+	  AND @ArtTipo <> 'SERVICIO'
+	  AND @FacturarVtasMostrador = 0
+	  AND @Accion <> 'CANCELAR'
+	  BEGIN
+		  IF @Ok = 20010
+		  BEGIN
+			  SELECT
+				  @Ok = NULL,
+				  @OkRef = NULL
+		  END
+	  END;
+
+    --Kike Sierra: 2017/02/07: Permite eliminar saldos menores de Inventario,
+    -- sin caer en el error de Cantidad vs Round(Cantidad,@DecimalesEmpresa) ( 20550 xD )
+    IF @Ok = 20550
+    AND @Movtipo = 'INV.A'
+    AND @Estatus = 'SINAFECTAR'
+    AND @CUP_Origen = 13 -- Eliminacion de saldos menores inv
+    AND @Cantidad < .01
+    BEGIN
+      SELECT @OK = NULL, @OkRef = NULL
+    END  
+  END
 
 	RETURN;
 END;

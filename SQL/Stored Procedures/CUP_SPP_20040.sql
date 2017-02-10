@@ -48,7 +48,7 @@ CREATE PROCEDURE dbo.CUP_SPP_20040
   @OkRef VARCHAR(255) OUTPUT
 AS BEGIN
   DECLARE 
-    @Concepto VARCHAR(50)
+    @CUP_Origen INT
 
   IF @Ok = 20040
   BEGIN
@@ -57,7 +57,7 @@ AS BEGIN
     BEGIN
 
       SELECT 
-        @Concepto = i.Concepto
+        @CUP_Origen = i.CUP_Origen
       FROM 
         Inv i 
       WHERE 
@@ -66,10 +66,7 @@ AS BEGIN
       -- Evita marcar el error en la eliminacion
       -- de saldos menores
       IF @Movtipo = 'INV.A'
-      AND @Usuario = 'PRODAUT'
-      AND @Accion IN ('VERIFICAR','GENERAR','AFECTAR')
-      AND @Estatus = 'SINAFECTAR'
-      AND @Concepto = 'Ajuste por saldos menores'
+      AND @CUP_Origen = 13
       BEGIN
         SELECT @OK = NULL, @OkRef = NULL
       END

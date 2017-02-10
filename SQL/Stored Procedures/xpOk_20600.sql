@@ -20,37 +20,49 @@ ALTER PROCEDURE [dbo].[xpOk_20600]
 	@Ok         INT OUTPUT,
 	@OkRef      VARCHAR(255) OUTPUT
 AS BEGIN
-	IF @Modulo = 'PROD'
-			AND @Accion = 'AFECTAR'
-	BEGIN
-		SELECT
-			@Ok = NULL
-	END;
 
-  --  Kike Sierra: 2017-02-07: Permite afectar ajustes de 
-  -- saldos menores inventarios, sin considerar el error de
-  -- 'Costo indicado es menor al minimo aceptable ( 2060 )'
-  IF @Ok = '20600'
-  AND @Modulo = 'INV'
-  AND @Usuario = 'PRODAUT'
-  AND EXISTS
-  (
-    SELECT 
-      i.ID 
-    FROM 
-      Inv i 
-    JOIN Movtipo t ON t.Modulo = 'INV'
-                  AND t.Mov = i.Mov
-    WHERE
-      i.ID = @ID
-    AND t.Clave = 'INV.A'
-    AND i.Concepto = 'Ajuste por saldos menores'
-    AND i.Estatus = 'SINAFECTAR'
-  )
+  DECLARE 
+    @CUP_Origen INT,
+    @MovTipo CHAR(20)
+  
+  IF @OK = 20600
   BEGIN
-    SELECT
-      @OK = NULL,
-      @OkRef = NULL
-  END 
+      
+    -- ??? : No se sabe quien o cuando se puso este criterio.
+    IF @Modulo = 'PROD'
+		AND @Accion = 'AFECTAR'
+	  BEGIN
+		  SELECT
+			  @Ok = NULL
+	  END;
+
+    IF @Modulo = 'INV'
+    BEGIN
+      
+      SELECT 
+        @CUP_Origen = CUP_Origen,
+        @MovTipo = t.Clave
+      FROM 
+        Inv i
+      JOIN Movtipo t ON t.Modulo = 'INV'
+                    AND t.Mov = i.Mov
+      WHERE 
+        i.ID = @ID
+      
+      -- Kike Sierra: 2017-02-07: Permite afectar ajustes de 
+      -- saldos menores inv sin considerar el error de
+      -- 'Costo indicado es menor al minimo aceptable ( 20600 )
+      IF @MovTipo = 'INV.A'
+      AND @CUP_Origen = 13 
+      BEGIN
+        SELECT
+          @OK = NULL,
+          @OkRef = NULL
+      END 
+
+    END
+
+  END
+ 
 	RETURN;
 END;
