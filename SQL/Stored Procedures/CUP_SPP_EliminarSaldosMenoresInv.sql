@@ -19,7 +19,8 @@ GO
   Description: Procedimiento almacenado encargado de controlar
   la logica de la eliminacion de saldos menores de Inventario.
  
-  Example: EXEC CUP_SPP_EliminarSaldosMenoresInv 
+  Example: EXEC CUP_SPP_EliminarSaldosMenoresInv
+            @Usuario = 'PRODAUT',
             @Empresa = 'CML',
             @Sucursal = NULL,
             @Almacen = NULL,
@@ -36,6 +37,7 @@ GO
 
 
 CREATE PROCEDURE dbo.CUP_SPP_EliminarSaldosMenoresInv
+  @Usuario CHAR(10),
   @Empresa CHAR(5),
   @Sucursal INT = NULL,
   @Almacen CHAR(10) = NULL,
@@ -51,6 +53,8 @@ AS BEGIN
     @MonedaCosteo VARCHAR(10),
     @Ok INT,
     @OkRef VARCHAR(255),
+    @ProcesoID INT = 13, -- Este es el ID que identifica el tipo de proceso definido en CUP_Procesos
+    @ID INT,
     @r_AjusteID INT
 
   SET NOCOUNT ON;
@@ -203,7 +207,7 @@ AS BEGIN
       ExistenciaRealSU DECIMAL(18,5) NOT NULL,
       ExistenciaSL     FLOAT NOT NULL,
       ExistenciaRealSL DECIMAL(18,5) NOT NULL,
-      Tipo             VARCHAR(50) NULL,
+      Escenario        INT,
       PRIMARY KEY ( 
                     Empresa,
                     Sucursal,
@@ -224,7 +228,7 @@ AS BEGIN
       ExistenciaRealSU,
       ExistenciaSL,
       ExistenciaRealSL,
-      Tipo
+      EScenario
     )
     SELECT 
       su.Empresa,
@@ -236,7 +240,7 @@ AS BEGIN
       su.SaldoU_ExistenciaReal,
       ExistenciaSL = ISNULL(serielote.Existencia,0),
       ExistenciaRealSL = ISNULL(serieLote.ExistenciaReal,0),
-      Tipo = calc.Tipo
+      calc.Escenario
     FROM 
       #tmp_CUP_ArtExistencias su
     JOIN art ON su.Articulo = art.Articulo
@@ -256,7 +260,7 @@ AS BEGIN
     -- calculados
     OUTER APPLY(
                 SELECT 
-                  Tipo =  CASE 
+                  Escenario =  CASE 
                             WHEN
                                 -- Donde SaldoU y ExsistenciaSl ( o art tip normal) 
                                 --  sean iguales y menores  a 1.
@@ -272,9 +276,9 @@ AS BEGIN
                                   ABS(ISNULL(su.SaldoU_Existencia,0)) < .0001
                                 AND ABS(ISNULL(serielote.Existencia,0)) < .0001
                                 )
-                              THEN  'SEGURO' 
+                              THEN  1 -- Seguro
                             ELSE
-                              'UKNOWN'
+                              0 -- Desconocido
                           END       
                ) calc
     WHERE 
@@ -282,256 +286,332 @@ AS BEGIN
     AND ISNULL(su.SaldoU_Existencia,0) <> 0
     AND ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
 
-    -- Crea y afecta los Ajustes encargados de eliminar, 
-    -- aquellos saldos menores considerados como seguros.
-    IF OBJECT_ID('tempdb..#tmp_CUP_AdjustesSaldosMenores') IS NOT NULL 
-      DROP TABLE #tmp_CUP_AdjustesSaldosMenores;
-
-    CREATE TABLE #tmp_CUP_AdjustesSaldosMenores
+    -- Revisa que exista un escenario definido que la herramienta
+    -- este preparada para trabajar.
+    IF EXISTS
     (
-      ID INT NOT NULL PRIMARY KEY,
-      Almacen CHAR(10) NOT NULL UNIQUE,
-      Tipo VARCHAR(50) NOT NULL,
-      OK INT NULL,
-      OkRef VARCHAR(255) NULL
+      SELECT Escenario 
+      FROM #tmp_CUP_SaldosMenoresSU
+      WHERE Escenario <> 0
     )
-
-    CREATE NONCLUSTERED INDEX IX_#tmp_CUP_AdjustesSaldosMenores
-        ON #tmp_CUP_AdjustesSaldosMenores ( Almacen )
-    INCLUDE ( ID, Tipo );
-
-    INSERT INTO Inv
-    (
-      Empresa,
-      Sucursal,
-      Mov,
-      Estatus,
-      FechaEmision,
-      FechaRegistro,
-      Concepto,
-      Moneda,
-      TipoCambio,
-      Almacen,
-      Usuario
-    )
-    OUTPUT
-      INSERTED.ID,
-      INSERTED.Almacen,
-      'SEGURO'
-    INTO
-      #tmp_CUP_AdjustesSaldosMenores
-    (
-      ID,
-      Almacen,
-      Tipo
-    )
-    SELECT DISTINCT 
-        su.Empresa,
-        su.Sucursal,
-        Mov = 'Ajuste',
-        Estatus = 'SINAFECTAR',
-        FechaEmision = CAST(GETDATE() AS DATE),
-        FechaRegistro = GETDATE(),
-        Concepto = 'Ajuste por saldos Menores',
-        Moneda = 'Pesos',
-        TipoCambio = 1,
-        su.Almacen,
-        Usuario = 'PRODAUT'
-    FROM 
-      #tmp_CUP_SaldosMenoresSU su
-    WHERE 
-      su.Tipo = 'SEGURO'
-
-    -- Inserta el detalle de los movimientos.
-    INSERT INTO InvD 
-    ( 
-      ID,
-      Renglon,
-      RenglonSub,
-      RenglonID,
-      RenglonTipo,
-      Cantidad,
-      Almacen,
-      Articulo,
-      SubCuenta,
-      Costo,
-      Unidad,
-      Factor,
-      CantidadInventario,
-      Sucursal 
-    )  
-    SELECT 
-      ajm.ID, 
-      Renglon = CAST(   2048 
-                      * ROW_NUMBER() OVER (
-                                            ORDER BY
-                                              ajm.ID,
-                                              su.Articulo,
-                                              su.Subcuenta
-                                           ) 
-                     AS FLOAT),  --(de 2048 en 2048)
-      RenglonSub= ROW_NUMBER() OVER (
-                                      PARTITION BY
-                                        ajm.ID,
-                                        su.Articulo,
-                                        su.Subcuenta 
-                                      ORDER BY
-                                        su.Subcuenta
-                                      ) - 1, 
-      RenglonID = ROW_NUMBER() OVER (
-                                      ORDER BY
-                                        ajm.ID,
-                                        su.Articulo,
-                                        su.Subcuenta
-                                     ),                        
-      RenglonTipo = dbo.fnRenglonTipo(a.Tipo),                                                
-      Cantidad =  su.ExistenciaSU * -1 , 
-      Almacen = ajm.Almacen, 
-      Articulo = su.Articulo, 
-      SubCuenta = NULLIF(su.Subcuenta,''),
-      Costo = CASE -- Costo. ** Basarse en lo que hace el  spVerCosto ** 
-                WHEN a.MonedaCosto = @MonedaCosteo THEN  
-                    ROUND(ISNULL(ac.CostoPromedio, 0),4)
-                ELSE 
-                  CASE 
-                    WHEN  a.MonedaCosto = 'Pesos' THEN 
-                        ROUND(ISNULL(ac.CostoPromedio, ace.CostoPromedio )  / @TipoCambio,4)
-                    ELSE 
-                        ROUND(ISNULL(ac.CostoPromedio, ace.CostoPromedio ) / mcosto.TipoCambio,4) *  ROUND(@TipoCambio,4)
-                  END 
-              END,  
-      Unidad = a.Unidad,
-      Factor = 1,
-      CantidadInventario = ISNULL(su.ExistenciaSU,0) * -1, 
-      Sucursal = su.Sucursal  
-    FROM 
-      #tmp_CUP_AdjustesSaldosMenores ajm
-    JOIN #tmp_CUP_SaldosMenoresSU su ON su.Almacen = ajm.Almacen
-    JOIN art a ON a.Articulo = su.Articulo   
-    left OUTER JOIN ArtCosto ac ON ac.Articulo = su.Articulo
-                                AND ac.Sucursal = su.Sucursal
-                                AND ac.Empresa = su.Empresa
-    LEFT OUTER JOIN ArtCostoEmpresa ace ON ace.Articulo = su.Articulo
-                                        AND ace.Empresa = su.Empresa
-    JOIN mon mcosto ON a.MonedaCosto = mcosto.Moneda                    
-    WHERE 
-      su.Tipo  = 'SEGURO'
-
-    -- Actualiza el Renglon Maximo del cabecero.
-    UPDATE i 
-    SET RenglonID = (SELECT MAX(d.RenglonID)
-                      FROM InvD d 
-                      WHERE d.ID = i.ID)
-    FROM
-      #tmp_CUP_AdjustesSaldosMenores ajm
-    JOIN inv i ON i.ID = ajm.ID
-              AND i.Almacen = ajm.Almacen
-
-    --SeriesLote
-    INSERT INTO SerieLoteMov 
-    (
-      Empresa,
-      Modulo,
-      ID,
-      RenglonID,
-      Articulo,
-      SubCuenta,
-      SerieLote,
-      Cantidad,
-      Propiedades,
-      Sucursal
-    )  
-    SELECT 
-      i.Empresa, 
-      'INV',
-      ajm.ID,
-      d.RenglonID,
-      d.Articulo,
-      Subcuenta = ISNULL(d.Subcuenta,''),
-      sl.SerieLote,
-      sl.Existencia,
-      sl.Propiedades,
-      i.Sucursal
-    FROM
-      #tmp_CUP_AdjustesSaldosMenores ajm
-    JOIN Inv i ON i.Id = ajm.ID
-    JOIN InvD d ON d.ID = i.ID   
-    JOIN #tmp_CUP_ArtExistenciasSL sl ON i.Empresa = sl.Empresa
-                                      AND i.Sucursal = sl.Sucursal
-                                      AND i.Almacen = sl.Almacen
-                                      AND d.Articulo = sl.Articulo
-                                      AND ISNULL(d.SubCuenta,'') = ISNULL(sl.Subcuenta,'')
-    WHERE
-      d.RenglonTipo IN ('S','L')
-
-    -- Afecta los Ajustes Menores.
-    DECLARE cr_AjustesMenores CURSOR LOCAL FAST_FORWARD FOR 
-    SELECT 
-      ID 
-    FROM 
-      #tmp_CUP_AdjustesSaldosMenores
-
-    OPEN cr_AjustesMenores
-
-    FETCH NEXT FROM cr_AjustesMenores INTO @r_AjusteID
-
-    WHILE @@FETCH_STATUS = 0
     BEGIN
+      DECLARE @AjustesGenerados TABLE
+      (
+        ID INT NOT NULL,
+        Escenario INT NOT NULL
+      )
+      -- Guardamos un registro del proceso de eliminacion de saldos menores.
+      INSERT INTO CUP_EliminarSaldosMenoresInv ( Usuario )
+      VALUES ( @Usuario )
 
+      SET @ID = SCOPE_IDENTITY()
+
+      -- Prepara los Ajustes que trabajaran los escenarios seguros de eliminar.
+      -- Es decir, aquellos donde no deberiamos esperar problemas o procesos
+      -- muy especiales.
+      EXEC CUP_SPI_EliminarSaldosMenoresInv_Seguros @ID
+
+      INSERT INTO Inv
+      (
+        Empresa,
+        Sucursal,
+        Mov,
+        Estatus,
+        FechaEmision,
+        FechaRegistro,
+        Concepto,
+        Moneda,
+        TipoCambio,
+        Almacen,
+        Usuario,
+        CUP_Origen,
+        CUP_OrigenID
+      )
+      OUTPUT 
+        INSERTED.ID,
+        1
+      INTO @AjustesGenerados
+      (
+        ID,
+        Escenario
+      )
+      SELECT DISTINCT 
+          su.Empresa,
+          su.Sucursal,
+          Mov = 'Ajuste',
+          Estatus = 'SINAFECTAR',
+          FechaEmision = CAST(GETDATE() AS DATE),
+          FechaRegistro = GETDATE(),
+          Concepto = 'Ajuste por saldos Menores',
+          Moneda = 'Pesos',
+          TipoCambio = 1,
+          su.Almacen,
+          Usuario = 'PRODAUT',
+          CUP_Origen = @ProcesoID,
+          CUP_OrigenID  = @ID
+      FROM 
+        #tmp_CUP_SaldosMenoresSU su
+      WHERE 
+        su.Escenario = 1
+
+      -- Guarda el registro del ajuste generado junto con su tipo.
+      INSERT INTO
+        CUP_EliminarSaldosMenoresInv_AjustesGenerados
+      (
+        ID,
+        Modulo,
+        ModuloID,
+        Escenario
+      )
       SELECT 
-        @OK = NULL,
-        @OKRef = NULL
+        @ID,
+        Modulo = 'INV',
+        ModuloID = ag.ID,
+        ag.Escenario
+      FROM 
+        @AjustesGenerados ag
 
-      EXEC spAfectar
-        @Modulo = 'INV', 
-        @ID = @r_AjusteID ,
-        @Accion = 'AFECTAR',
-        @Base = 'TODO',
-        @GenerarMov =NULL, 
-        @Usuario = 'PRODAUT',
-        @SincroFinal = 0, 
-        @EnSilencio = 1,
-        @OK = @OK OUTPUT,
-        @OkRef = @OkRef OUTPUT
+      -- Inserta el detalle de los movimientos.
+      INSERT INTO InvD 
+      ( 
+        ID,
+        Renglon,
+        RenglonSub,
+        RenglonID,
+        RenglonTipo,
+        Cantidad,
+        Almacen,
+        Articulo,
+        SubCuenta,
+        Costo,
+        Unidad,
+        Factor,
+        CantidadInventario,
+        Sucursal 
+      )  
+      SELECT 
+        i.ID, 
+        Renglon = CAST(   2048 
+                        * ROW_NUMBER() OVER (
+                                              ORDER BY
+                                                i.ID,
+                                                su.Articulo,
+                                                su.Subcuenta
+                                             ) 
+                       AS FLOAT),  --(de 2048 en 2048)
+        RenglonSub= ROW_NUMBER() OVER (
+                                        PARTITION BY
+                                          i.ID,
+                                          su.Articulo,
+                                          su.Subcuenta 
+                                        ORDER BY
+                                          su.Subcuenta
+                                        ) - 1, 
+        RenglonID = ROW_NUMBER() OVER (
+                                        ORDER BY
+                                          i.ID,
+                                          su.Articulo,
+                                          su.Subcuenta
+                                       ),                        
+        RenglonTipo = dbo.fnRenglonTipo(a.Tipo),                                                
+        Cantidad =  su.ExistenciaSU * -1 , 
+        Almacen = i.Almacen, 
+        Articulo = su.Articulo, 
+        SubCuenta = NULLIF(su.Subcuenta,''),
+        Costo = CASE -- Costo. ** Basarse en lo que hace el  spVerCosto ** 
+                  WHEN a.MonedaCosto = @MonedaCosteo THEN  
+                      ROUND(ISNULL(ac.CostoPromedio, 0),4)
+                  ELSE 
+                    CASE 
+                      WHEN  a.MonedaCosto = 'Pesos' THEN 
+                          ROUND(ISNULL(ac.CostoPromedio, ace.CostoPromedio )  / @TipoCambio,4)
+                      ELSE 
+                          ROUND(ISNULL(ac.CostoPromedio, ace.CostoPromedio ) / mcosto.TipoCambio,4) *  ROUND(@TipoCambio,4)
+                    END 
+                END,  
+        Unidad = a.Unidad,
+        Factor = 1,
+        CantidadInventario = ISNULL(su.ExistenciaSU,0) * -1, 
+        Sucursal = su.Sucursal  
+      FROM 
+        CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
+      JOIN Inv i ON 'INV' = ajm.Modulo
+                AND i.Id = ajm.ModuloID
+      JOIN #tmp_CUP_SaldosMenoresSU su ON su.Almacen = i.Almacen  
+      JOIN art a ON a.Articulo = su.Articulo   
+      left OUTER JOIN ArtCosto ac ON ac.Articulo = su.Articulo
+                                  AND ac.Sucursal = su.Sucursal
+                                  AND ac.Empresa = su.Empresa
+      LEFT OUTER JOIN ArtCostoEmpresa ace ON ace.Articulo = su.Articulo
+                                          AND ace.Empresa = su.Empresa
+      JOIN mon mcosto ON a.MonedaCosto = mcosto.Moneda                    
+      WHERE 
+          ajm.ID = @ID
+      AND ajm.Modulo = 'INV'
+      AND su.Escenario = 1
 
-      -- Registra el Resultado.
-      UPDATE #tmp_CUP_AdjustesSaldosMenores
-      SET Ok = @Ok, OkRef = @OkRef
-      WHERE id = @r_AjusteID
+      -- Actualiza el Renglon Maximo del cabecero.
+      UPDATE i 
+      SET RenglonID = (SELECT MAX(d.RenglonID)
+                        FROM InvD d 
+                        WHERE d.ID = i.ID)
+      FROM
+        CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
+      JOIN inv i ON i.ID = ajm.ModuloID
+      WHERE 
+        ajm.Id = @ID 
+      AND ajm.Modulo = 'INV'
+
+      --SeriesLote
+      INSERT INTO SerieLoteMov 
+      (
+        Empresa,
+        Modulo,
+        ID,
+        RenglonID,
+        Articulo,
+        SubCuenta,
+        SerieLote,
+        Cantidad,
+        Propiedades,
+        Sucursal
+      )  
+      SELECT 
+        i.Empresa, 
+        ajm.Modulo,
+        ajm.ModuloID,
+        d.RenglonID,
+        d.Articulo,
+        Subcuenta = ISNULL(d.Subcuenta,''),
+        sl.SerieLote,
+        sl.Existencia,
+        sl.Propiedades,
+        i.Sucursal
+      FROM
+        CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
+      JOIN Inv i ON  i.Id = ajm.ModuloID
+      JOIN InvD d ON d.ID = i.ID   
+      JOIN #tmp_CUP_ArtExistenciasSL sl ON i.Empresa = sl.Empresa
+                                        AND i.Sucursal = sl.Sucursal
+                                        AND i.Almacen = sl.Almacen
+                                        AND d.Articulo = sl.Articulo
+                                        AND ISNULL(d.SubCuenta,'') = ISNULL(sl.Subcuenta,'')
+      WHERE
+        ajm.ID = @ID
+      AND ajm.Modulo = 'INV'
+      AND d.RenglonTipo IN ('S','L')
+
+      -- Afecta los Ajustes Menores.
+      DECLARE cr_AjustesMenores CURSOR LOCAL FAST_FORWARD FOR 
+      SELECT 
+        i.ID 
+      FROM 
+        CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
+      JOIN Inv i ON i.ID = ajm.ModuloID
+      WHERE 
+        ajm.Id = @ID 
+      AND ajm.Modulo = 'INV'
+
+      OPEN cr_AjustesMenores
 
       FETCH NEXT FROM cr_AjustesMenores INTO @r_AjusteID
+
+      WHILE @@FETCH_STATUS = 0
+      BEGIN
+
+        SELECT 
+          @OK = NULL,
+          @OKRef = NULL
+
+        EXEC spAfectar
+          @Modulo = 'INV', 
+          @ID = @r_AjusteID ,
+          @Accion = 'AFECTAR',
+          @Base = 'TODO',
+          @GenerarMov =NULL, 
+          @Usuario = 'PRODAUT',
+          @SincroFinal = 0, 
+          @EnSilencio = 1,
+          @OK = @OK OUTPUT,
+          @OkRef = @OkRef OUTPUT
+
+        ---- Apartado para eliminar renglones con el problema del costeo.
+        --WHILE @Ok = 20101
+        --  EXEC CUP_SPP_EliminaSMInv_RemueveArtProblemaCosto
+        --    @ID = @r_AjusteID,
+        --    @Ok = @OK INT OUTPUT,
+        --    @OkREf = @OkRef INT OUTPUT
+        --
+
+        FETCH NEXT FROM cr_AjustesMenores INTO @r_AjusteID
+      END
+
+      CLOSE cr_AjustesMenores
+
+      DEALLOCATE cr_AjustesMenores
+
+
+      IF ISNULL(@EnSilencio,0) = 0
+      BEGIN
+
+        SELECT
+          ajm.ID,
+          ajm.Modulo,
+          ajm.ModuloId,
+          ajm.Escenario,
+          i.Almacen,
+          i.Estatus,
+          ab.Accion,
+          ab.Base,
+          ab.GenerarMov,
+          ab.Usuario,
+          ab.FechaRegistro,
+          ab.Ok,
+          ab.OkRef,
+          MensajeDesc =  m.Descripcion
+        FROM
+          CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
+        JOIN inv i ON i.ID = ajm.ModuloID
+        LEFT JOIN AfectarBitacora ab ON ab.Modulo = ajm.Modulo
+                                    AND ab.ModuloID = ajm.ModuloID
+        LEFT JOIN MensajeLista m ON m.Mensaje = ab.OK
+        WHERE 
+          ajm.Id = @ID
+        AND ajm.Modulo = 'INV'
+        ORDER BY
+          ajm.Id,
+          ajm.Modulo,
+          ajm.ModuloID,
+          ab.ID ASC
+
+        SELECT * from #tmp_CUP_SaldosMenoresSU
+
+        /*
+        -- Detalle Ajustes
+        SELECT
+          ajm.Id,
+          ajm.Modulo,
+          ajm.ModuloId,
+          i.Mov,
+          i.Movid,
+          i.Almacen,
+          d.Articulo,
+          d.SubCuenta,
+          d.Cantidad,
+          d.Factor,
+          d.CantidadInventario,
+          d.Costo
+        FROM
+          CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
+        JOIN inv i ON i.ID = ajm.ModuloID
+        JOIN InvD d ON d.ID = ajm.ID
+        WHERE 
+          ajm.Id = @ID
+        AND ajm.Modulo = 'INV'
+        */
+      END
     END
-
-    CLOSE cr_AjustesMenores
-
-    DEALLOCATE cr_AjustesMenores
-
-
-    IF ISNULL(@EnSilencio,0) = 0
-    BEGIN
-
-      SELECT
-        ajm.ID,
-        ajm.Almacen,
-        ajm.Tipo,
-        ajm.Ok,
-        ajm.OkRef,
-        m.Descripcion
-      FROM
-        #tmp_CUP_AdjustesSaldosMenores ajm
-      LEFT JOIN MensajeLista m ON m.Mensaje = ajm.OK
-
-      SELECT * from #tmp_CUP_SaldosMenoresSU
-
-      -- Detalle Ajustes
-      SELECT
-        *
-      from 
-        #tmp_CUP_AdjustesSaldosMenores ajm
-      JOIN InvD d ON d.ID = ajm.ID
-
-    END
-
+    
     -- Libera el bloqueo del procedimiento
     EXECUTE sp_releaseapplock @Resource = @LockName
   END
