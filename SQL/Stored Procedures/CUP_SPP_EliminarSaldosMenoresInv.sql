@@ -53,7 +53,8 @@ AS BEGIN
     @TipoCambio FLOAT,
     @MonedaCosteo VARCHAR(10),
     @ProcesoID INT = 13, -- Este es el ID que identifica el tipo de proceso definido en CUP_Procesos
-    @ID INT
+    @ID INT,
+    @CantidadSegura DECIMAL(18,5) = .00009
 
   SET NOCOUNT ON;
 
@@ -315,8 +316,8 @@ AS BEGIN
                                 ) 
                                 -- Los saldos chiquititos ( menor a 4 decimales ) se pueden sacar sin problema. 
                             OR (
-                                  ABS(ISNULL(su.SaldoU_Existencia,0)) < .0001
-                                AND ABS(ISNULL(serielote.Existencia,0)) < .0001
+                                  ABS(ISNULL(su.SaldoU_Existencia,0)) <= @CantidadSegura
+                                AND ABS(ISNULL(serielote.Existencia,0)) <= @CantidadSegura
                                 )
                               THEN  1 -- Seguro
                             ELSE
