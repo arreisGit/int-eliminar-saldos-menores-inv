@@ -48,7 +48,7 @@ AS BEGIN
 
   DECLARE
     @LockResult INT,
-    @LockName NVARCHAR(255) = 'CUP_Herramienta_Eliminacion_Saldos_Menores_Inv',
+    @LockName NVARCHAR(255) = 'CUP_SPP_EliminarSaldosMenoresInv',
     @TipoCambio FLOAT,
     @MonedaCosteo VARCHAR(10),
     @ProcesoID INT = 13, -- Este es el ID que identifica el tipo de proceso definido en CUP_Procesos
