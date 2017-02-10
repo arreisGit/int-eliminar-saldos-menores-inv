@@ -320,67 +320,10 @@ AS BEGIN
       -- Afecta los Ajustes Menores generados por este proceso.
       EXEC CUP_SPP_EliminarSaldosMenoresInv_AfectarAjustes @ID
 
-
       -- Reporta el resultado del proceso.
-      IF ISNULL(@EnSilencio,0) = 0
-      BEGIN
+      IF ISNULL(@EnSilencio,0) = 0        
+        EXEC CUP_SPQ_EliminarSaldosMenoresInv_ResultadoDelProceso @ID
 
-        SELECT
-          ajm.ID,
-          ajm.Modulo,
-          ajm.ModuloId,
-          ajm.Escenario,
-          i.Almacen,
-          i.Estatus,
-          ab.Accion,
-          ab.Base,
-          ab.GenerarMov,
-          ab.Usuario,
-          ab.FechaRegistro,
-          ab.Ok,
-          ab.OkRef,
-          MensajeDesc =  m.Descripcion
-        FROM
-          CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
-        JOIN inv i ON i.ID = ajm.ModuloID
-        LEFT JOIN AfectarBitacora ab ON ab.Modulo = ajm.Modulo
-                                    AND ab.ModuloID = ajm.ModuloID
-        LEFT JOIN MensajeLista m ON m.Mensaje = ab.OK
-        WHERE 
-          ajm.Id = @ID
-        AND ajm.Modulo = 'INV'
-        ORDER BY
-          ajm.Id,
-          ajm.Modulo,
-          ajm.ModuloID,
-          ab.ID ASC
-
-        SELECT * from #tmp_CUP_SaldosMenoresSU
-
-        /*
-        -- Detalle Ajustes
-        SELECT
-          ajm.Id,
-          ajm.Modulo,
-          ajm.ModuloId,
-          i.Mov,
-          i.Movid,
-          i.Almacen,
-          d.Articulo,
-          d.SubCuenta,
-          d.Cantidad,
-          d.Factor,
-          d.CantidadInventario,
-          d.Costo
-        FROM
-          CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
-        JOIN inv i ON i.ID = ajm.ModuloID
-        JOIN InvD d ON d.ID = ajm.ID
-        WHERE 
-          ajm.Id = @ID
-        AND ajm.Modulo = 'INV'
-        */
-      END
     END
     
     -- Libera el bloqueo del procedimiento
