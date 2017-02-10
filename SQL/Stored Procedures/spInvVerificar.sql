@@ -1645,6 +1645,27 @@ EXEC vic_spInvVerificar @ID, @Accion, @Base, @Empresa, @Usuario, @Modulo,
             AND @Ok IS NULL
             EXEC spOpcionValidar @Articulo, @Subcuenta, @Accion, @CfgOpcionBloquearDescontinuado,
               @CfgOpcionPermitirDescontinuado, @Ok OUTPUT, @OkRef OUTPUT 
+
+          -- Kike Sierra: 2017-02-10: Procedimiento encargado de extender las Validaciones del 
+          -- spOpcionValidar con la finalidad de poder tener mas alternativas a la hora de decidir
+          -- cuando SI y cuando NO se debe aplicar este criterio. Ej, en la eliminacion de saldos
+          -- menores no es necesario aplicar la validacion.
+          EXEC CUP_SPP_OpcionValidar
+            @Modulo,
+            @Id,
+            @Accion,
+            @Base,
+            @GenerarMov,
+            @Mov,
+            @Movtipo,
+            @Articulo,
+            @Subcuenta,
+            @CfgOpcionBloquearDescontinuado,
+            @CfgOpcionPermitirDescontinuado,
+            @Ok OUTPUT,
+            @OkRef OUTPUT 
+          --
+
           SELECT
             @Almacen = @AlmacenOriginal,
             @AlmacenDestino = @AlmacenDestinoOriginal
