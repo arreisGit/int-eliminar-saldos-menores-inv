@@ -24,9 +24,7 @@ GO
 
 CREATE PROCEDURE dbo.CUP_SPI_EliminarSaldosMenoresInv_Seguros
   @ProcesoID INT,
-  @ID INT,
-  @MonedaCosteo CHAR(10),
-  @TipoCambio   FLOAT
+  @ID INT
 AS BEGIN 
 
       DECLARE @AjustesGenerados TABLE
@@ -139,17 +137,7 @@ AS BEGIN
         Almacen = i.Almacen, 
         Articulo = su.Articulo, 
         SubCuenta = NULLIF(su.Subcuenta,''),
-        Costo = CASE -- Costo. ** Basarse en lo que hace el  spVerCosto ** 
-                  WHEN a.MonedaCosto = @MonedaCosteo THEN  
-                      ROUND(ISNULL(ac.CostoPromedio, 0),4)
-                  ELSE 
-                    CASE 
-                      WHEN  a.MonedaCosto = 'Pesos' THEN 
-                          ROUND(ISNULL(ac.CostoPromedio, ace.CostoPromedio )  / @TipoCambio,4)
-                      ELSE 
-                          ROUND(ISNULL(ac.CostoPromedio, ace.CostoPromedio ) / mcosto.TipoCambio,4) *  ROUND(@TipoCambio,4)
-                    END 
-                END,  
+        su.Costo,  
         Unidad = a.Unidad,
         Factor = 1,
         CantidadInventario = ISNULL(su.ExistenciaSU,0) * -1, 
@@ -162,13 +150,7 @@ AS BEGIN
                                       AND su.Empresa = i.Empresa
                                       AND su.Sucursal = i.Sucursal
                                       AND su.Almacen = i.Almacen
-      JOIN art a ON a.Articulo = su.Articulo   
-      left OUTER JOIN ArtCosto ac ON ac.Articulo = su.Articulo
-                                  AND ac.Sucursal = su.Sucursal
-                                  AND ac.Empresa = su.Empresa
-      LEFT OUTER JOIN ArtCostoEmpresa ace ON ace.Articulo = su.Articulo
-                                          AND ace.Empresa = su.Empresa
-      JOIN mon mcosto ON a.MonedaCosto = mcosto.Moneda                    
+      JOIN art a ON a.Articulo = su.Articulo                
       WHERE 
           ajm.ID = @ID
       AND ajm.Modulo = 'INV'

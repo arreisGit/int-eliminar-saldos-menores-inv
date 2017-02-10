@@ -43,7 +43,8 @@ CREATE PROCEDURE dbo.CUP_SPP_EliminarSaldosMenoresInv
   @Almacen CHAR(10) = NULL,
   @Articulo CHAR(20) = NULL,
   @Subcuenta VARCHAR(20) = NULL,
-  @EnSilencio BIT = 1
+  @EnSilencio BIT = 1,
+  @EvitarError20101 BIT = 1
 AS BEGIN 
 
   DECLARE
@@ -200,6 +201,7 @@ AS BEGIN
       Almacen         CHAR(10) NOT NULL,
       Articulo         CHAR(20) NOT NULL,
       SubCuenta        VARCHAR(20) NOT NULL,
+      Costo            FLOAT NULL,
       ExistenciaSU     FLOAT NOT NULL,
       ExistenciaRealSU DECIMAL(18,5) NOT NULL,
       ExistenciaSL     FLOAT NOT NULL,
@@ -219,11 +221,12 @@ AS BEGIN
                                           Escenario,
                                           Empresa,
                                           Sucursal,
-                                          Almacen 
+                                          Almacen
                                        )
     INCLUDE ( 
                Articulo,
                SubCuenta,
+               Costo,
                ExistenciaSU,
                ExistenciaSL
             );
@@ -235,6 +238,7 @@ AS BEGIN
       Almacen,
       Articulo,
       Subcuenta,
+      Costo,
       ExistenciaSU,
       ExistenciaRealSU,
       ExistenciaSL,
@@ -247,6 +251,7 @@ AS BEGIN
       su.Almacen,
       su.Articulo,
       su.SubCuenta,
+      calc.Costo,
       su.SaldoU_Existencia,
       su.SaldoU_ExistenciaReal,
       ExistenciaSL = ISNULL(serielote.Existencia,0),
@@ -255,6 +260,12 @@ AS BEGIN
     FROM 
       #tmp_CUP_ArtExistencias su
     JOIN art ON su.Articulo = art.Articulo
+    LEFT OUTER JOIN ArtCosto ac ON ac.Articulo = su.Articulo
+                               AND ac.Sucursal = su.Sucursal
+                               AND ac.Empresa = su.Empresa
+    LEFT OUTER JOIN ArtCostoEmpresa ace ON ace.Articulo = su.Articulo
+                                       AND ace.Empresa = su.Empresa
+    JOIN mon mcosto ON art.MonedaCosto = mcosto.Moneda    
     OUTER APPLY (
                   SELECT
                     Existencia = SUM(ISNULL(sl.Existencia,0)),
@@ -271,6 +282,26 @@ AS BEGIN
     -- calculados
     OUTER APPLY(
                 SELECT 
+                  Costo = CASE -- Costo. ** Basarse en lo que hace el  spVerCosto ** 
+                            WHEN art.MonedaCosto = @MonedaCosteo THEN  
+                                ROUND(ISNULL(ac.CostoPromedio, 0),4)
+                            ELSE 
+                              CASE 
+                                WHEN  art.MonedaCosto = 'Pesos' THEN 
+                                  ROUND
+                                  (
+                                      ISNULL(ac.CostoPromedio, ace.CostoPromedio )
+                                    / @TipoCambio
+                                  ,4)
+                                ELSE 
+                                  ROUND
+                                  (
+                                      ISNULL(ac.CostoPromedio, ace.CostoPromedio ) 
+                                    / mcosto.TipoCambio
+                                  ,4) 
+                                * ROUND(@TipoCambio,4)
+                              END 
+                          END,
                   Escenario =  CASE 
                             WHEN
                                 -- Donde SaldoU y ExsistenciaSl ( o art tip normal) 
@@ -295,7 +326,15 @@ AS BEGIN
     WHERE 
       art.Tipo IN ('Serie','Lote','Normal')
     AND ISNULL(su.SaldoU_Existencia,0) <> 0
-    AND ABS(ISNULL(su.SaldoU_Existencia,0)) < 1;
+    AND ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
+    -- Si @EvitarError20101 = 1, evita incluir articulos
+    -- con costo negativo.
+    AND ISNULL(calc.Costo,0) > CASE ISNULL(@EvitarError20101,1)
+                                 WHEN 1 THEN
+                                   0
+                                 ELSE 
+                                   ISNULL(calc.Costo,0) -1
+                               END;
 
     -- Revisa que exista un escenario definido que la herramienta
     -- este preparada para trabajar.
@@ -315,7 +354,7 @@ AS BEGIN
 
       -- Prepara los Ajustes seguros de eliminar. Es decir, aquellos donde no 
       -- deberiamos esperar problemas o procesos especiales.
-      EXEC CUP_SPI_EliminarSaldosMenoresInv_Seguros @ProcesoID, @ID, @MonedaCosteo, @TipoCambio
+      EXEC CUP_SPI_EliminarSaldosMenoresInv_Seguros @ProcesoID, @ID
 
       -- Afecta los Ajustes Menores generados por este proceso.
       EXEC CUP_SPP_EliminarSaldosMenoresInv_AfectarAjustes @ID
