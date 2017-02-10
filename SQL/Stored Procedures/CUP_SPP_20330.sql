@@ -50,6 +50,7 @@ AS BEGIN
 
   DECLARE 
     @CUP_Origen INT,
+    @EscenarioEliminarSaldosInv INT,
     @CantidadDetalle FLOAT,
     @CantidadSL FLOAT
 
@@ -60,9 +61,13 @@ AS BEGIN
     BEGIN
 
       SELECT 
-        @CUP_Origen = i.CUP_Origen
+        @CUP_Origen = i.CUP_Origen,
+        @EscenarioEliminarSaldosInv = ag.Escenario
       FROM 
-        Inv i 
+        Inv i
+      LEFT JOIN CUP_EliminarSaldosMenoresInv_AjustesGenerados ag ON 13 = i.CUP_Origen
+                                                               AND ag.Modulo = 'INV'
+                                                               AND ag.ModulOID = i.ID 
       WHERE 
         i.ID = @ID
 
@@ -91,8 +96,7 @@ AS BEGIN
       -- de saldos menores
       IF @Movtipo = 'INV.A'
       AND @CUP_Origen = 13
-      AND ABS(@CantidadDetalle) < .0001
-      AND ABS(@CantidadSL) < .0001
+      AND @EscenarioEliminarSaldosInv = 1 -- Escenario Eliminar Saldos Menores Seguro.
       BEGIN
         SELECT @OK = NULL, @OkRef = NULL
       END

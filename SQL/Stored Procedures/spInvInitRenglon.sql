@@ -415,7 +415,6 @@ AS BEGIN
 			@Ok OUTPUT,
 			@OkRef OUTPUT;
 
-		PRINT('DECIMALES : '+ISNULL(CAST(@Decimales AS VARCHAR), 'NULL')+' '+'@Cantidad: '+ISNULL(CAST(@Cantidad AS VARCHAR), 'NULL')+' '+'@CantidadRedondeada '+ISNULL(CAST(ROUND(@Cantidad, @Decimales) AS VARCHAR), 'NULL')+' ');
 		IF @AlVerificar = 1
 				AND @Decimales <= 10
 				AND @Modulo <> 'PROD'
