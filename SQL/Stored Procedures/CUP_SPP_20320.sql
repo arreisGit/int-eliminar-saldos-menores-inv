@@ -75,13 +75,14 @@ AS BEGIN
 
       SELECT 
         @CUP_Origen = i.CUP_Origen,
-        @CantidadDetalle = d.Cantidad
+        @CantidadDetalle = d.Cantidad,
+        @EscenarioEliminarSaldosInv = ag.Escenario
       FROM 
         Inv i 
       JOIN InvD d On d.ID = i.ID
       LEFT JOIN CUP_EliminarSaldosMenoresInv_AjustesGenerados ag ON 13 = i.CUP_Origen
-                                                            AND ag.Modulo = 'INV'
-                                                            AND ag.ModuloID = i.ID 
+                                                                AND ag.Modulo = 'INV'
+                                                                AND ag.ModuloID = i.ID 
       WHERE 
         i.ID = @ID 
       AND d.RenglonID = @RenglonID
