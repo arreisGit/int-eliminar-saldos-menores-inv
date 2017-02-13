@@ -4,10 +4,10 @@ GO
 
 IF EXISTS (SELECT * 
 		   FROM SYSOBJECTS 
-		   WHERE ID = OBJECT_ID('dbo.CUP_SPI_EliminarSaldosMenoresInv_Seguros') AND 
+		   WHERE ID = OBJECT_ID('dbo.CUP_SPI_EliminarSaldosMenoresInv_SUSeguros') AND 
 				 TYPE = 'P')
 BEGIN
-  DROP PROCEDURE dbo.CUP_SPI_EliminarSaldosMenoresInv_Seguros
+  DROP PROCEDURE dbo.CUP_SPI_EliminarSaldosMenoresInv_SUSeguros
 END	
 
 GO
@@ -22,7 +22,7 @@ GO
 
 ============================================= */
 
-CREATE PROCEDURE dbo.CUP_SPI_EliminarSaldosMenoresInv_Seguros
+CREATE PROCEDURE dbo.CUP_SPI_EliminarSaldosMenoresInv_SUSeguros
   @ProcesoID INT,
   @ID INT
 AS BEGIN 
