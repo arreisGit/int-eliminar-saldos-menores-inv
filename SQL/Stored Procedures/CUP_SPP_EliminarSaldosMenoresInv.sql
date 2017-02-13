@@ -305,20 +305,28 @@ AS BEGIN
                           END,
                   Escenario =  CASE 
                             WHEN
-                                -- Donde SaldoU y ExsistenciaSl ( o art tip normal) 
-                                --  sean iguales y menores  a 1.
-                                ( 
-                                    ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
-                                AND (
-                                      ISNULL(serieLote.Existencia,0) = ISNULL(su.SaldoU_Existencia,0)
-                                    OR dbo.fnRenglonTipo(art.Tipo) NOT IN ('S','L')
-                                    )
-                                ) 
-                                -- Los saldos chiquititos ( menor a 4 decimales ) se pueden sacar sin problema. 
-                            OR (
-                                  ABS(ISNULL(su.SaldoU_Existencia,0)) < @CantidadSegura
-                                AND ABS(ISNULL(serielote.Existencia,0)) < @CantidadSegura
-                                )
+                              (   
+                                  -- Donde SaldoU y ExsistenciaSl ( o art tip normal) 
+                                  --  sean iguales y menores  a 1.
+                                  ( 
+                                      ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
+                                  AND (
+                                        ISNULL(serieLote.Existencia,0) = ISNULL(su.SaldoU_Existencia,0)
+                                      OR dbo.fnRenglonTipo(art.Tipo) NOT IN ('S','L')
+                                      )
+                                  ) 
+                                  -- Los saldos chiquititos ( menor a 4 decimales ) se pueden sacar sin problema. 
+                              OR (
+                                    ABS(ISNULL(su.SaldoU_Existencia,0)) < @CantidadSegura
+                                  AND ABS(ISNULL(serielote.Existencia,0)) < @CantidadSegura
+                                  )
+                              )
+                              -- Los articulos que no llevan su unidad en KGS ( ej. los perfiles! )
+                              -- solo deben considerarse como seguros cuando su saldoU >= .05
+                            AND NOT( 
+                                      ISNULL(a.Undidad,'') <> 'Kgs'
+                                    AND ISNULL(su.SaldoU_Existencia,0) >= .05
+                                   )
                               THEN  1 -- Seguro
                             ELSE
                               0 -- Desconocido
