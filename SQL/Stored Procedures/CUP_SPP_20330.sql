@@ -96,7 +96,10 @@ AS BEGIN
       -- de saldos menores
       IF @Movtipo = 'INV.A'
       AND @CUP_Origen = 13
-      AND @EscenarioEliminarSaldosInv = 1 -- Escenario Eliminar Saldos Menores Seguro.
+      AND @EscenarioEliminarSaldosInv IN (
+                                            1, -- Escenario Eliminar SaldosU Menores Seguro.
+                                            2  -- Escenario Eliminar Saldos Serie Lote Menores Seguro.
+                                          )
       BEGIN
         SELECT @OK = NULL, @OkRef = NULL
       END

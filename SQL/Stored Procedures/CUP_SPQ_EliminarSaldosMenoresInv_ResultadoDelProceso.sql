@@ -64,6 +64,7 @@ AS BEGIN
     ajm.Id,
     ajm.Modulo,
     ajm.ModuloId,
+    Escenario = esc.Descripcion,
     i.Mov,
     i.Movid,
     i.Almacen,
@@ -79,6 +80,7 @@ AS BEGIN
     slm.Cantidad
   FROM
     CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
+  JOIN CUP_ElminarSaldosMenoresInv_Escenarios esc ON esc.ID = ajm.Escenario
   JOIN inv i ON i.ID = ajm.ModuloID
   JOIN InvD d ON d.ID = i.ID
   LEFT JOIN SerieLoteMov slm ON slm.Modulo = 'INV'

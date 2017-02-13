@@ -432,6 +432,7 @@ AS BEGIN
       -- Prepara los Ajustes seguros de eliminar. Es decir, aquellos donde no 
       -- deberiamos esperar problemas o procesos especiales.
       EXEC CUP_SPI_EliminarSaldosMenoresInv_SUSeguros @ProcesoID, @ID
+      EXEC CUP_SPI_EliminarSaldosMenoresInv_SLSeguros @ProcesoID, @ID, @CantidadSegura
 
       -- Afecta los Ajustes Menores generados por este proceso.
       IF ISNULL(@CorrerSinAfectar,0) = 0
