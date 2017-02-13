@@ -58,7 +58,7 @@ AS BEGIN
     proceso_ajustes.ModuloID,
     ab.ID ASC
 
-  /*
+  --/*
   -- Detalle Ajustes
   SELECT
     ajm.Id,
@@ -67,19 +67,28 @@ AS BEGIN
     i.Mov,
     i.Movid,
     i.Almacen,
+    d.RenglonID,
     d.Articulo,
     d.SubCuenta,
     d.Cantidad,
     d.Factor,
     d.CantidadInventario,
-    d.Costo
+    d.Costo,
+    slm.SerieLote,
+    slm.Propiedades,
+    slm.Cantidad
   FROM
     CUP_EliminarSaldosMenoresInv_AjustesGenerados ajm
   JOIN inv i ON i.ID = ajm.ModuloID
-  JOIN InvD d ON d.ID = ajm.ID
+  JOIN InvD d ON d.ID = i.ID
+  LEFT JOIN SerieLoteMov slm ON slm.Modulo = 'INV'
+                            AND slm.ID = i.ID
+                            AND slm.RenglonID = d.RenglonID
+                            AND slm.Articulo = d.Articulo
+                            AND ISNULL(slm.SubCuenta,'') = ISNULL(d.SubCuenta,'')
   WHERE 
     ajm.Id = @ID
   AND ajm.Modulo = 'INV'
-  */
+  --*/
 
 END

@@ -64,15 +64,20 @@ AS BEGIN
 
 	DECLARE
 		@CantidadNegativa BIT,
-    @CUP_Origen INT
+    @CUP_Origen INT,
+    @EscenarioEliminarSaldosInv INT
 
   IF @Modulo ='INV'
   BEGIN
 
     SELECT 
-      @CUP_Origen = CUP_Origen
+      @CUP_Origen = CUP_Origen,
+      @EscenarioEliminarSaldosInv = ag.Escenario
     FROM 
-      Inv i 
+      Inv i
+    LEFT JOIN CUP_EliminarSaldosMenoresInv_AjustesGenerados ag ON 13 = i.CUP_Origen
+                                                              AND ag.Modulo = 'INV'
+                                                              AND ag.ModuloID = i.ID 
     WHERE 
       i.ID = @ID
 
@@ -109,7 +114,7 @@ AS BEGIN
     AND @Movtipo = 'INV.A'
     AND @Estatus = 'SINAFECTAR'
     AND @CUP_Origen = 13 -- Eliminacion de saldos menores inv
-    AND @Cantidad < .01
+    AND @EscenarioEliminarSaldosInv = 1 -- Escenario Eliminar Saldos Menores Seguro.
     BEGIN
       SELECT @OK = NULL, @OkRef = NULL
     END  
