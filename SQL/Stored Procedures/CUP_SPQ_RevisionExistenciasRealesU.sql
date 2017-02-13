@@ -164,6 +164,7 @@ AS BEGIN
     Articulo            CHAR(20) NOT NULL,
     SubCuenta           VARCHAR(20) NOT NULL,
     Existencia          FLOAT NOT NULL,
+    CantidadReservada   FLOAT NOT NULL,
     PRIMARY KEY (
                   Empresa,
                   Sucursal,
@@ -180,7 +181,8 @@ AS BEGIN
     Almacen,
     ARticulo,
     Subcuenta,
-    Existencia
+    Existencia,
+    CantidadReservada
   )
   SELECT 
     SaldoU.Empresa,
@@ -188,11 +190,27 @@ AS BEGIN
     Almacen = SaldoU.Grupo,
     Articulo = SaldoU.Cuenta,
     Subcuenta = ISNULL(SaldoU.SubCuenta,''),
-    Existencia = SUM(ISNULL(SaldoU.SaldoU,0))
+    Existencia = SUM(
+                      CASE ISNULL(SaldoU.Rama,'') 
+                        WHEN 'INV' 
+                          THEN ISNULL(SaldoU.SaldoU,0)
+                        ELSE 
+                          0
+                       END
+                    ),
+    CantidadReservada = SUM
+                       (
+                        CASE ISNULL(SaldoU.Rama,'') 
+                          WHEN 'RESV' 
+                            THEN ISNULL(SaldoU.SaldoU,0)
+                          ELSE 
+                            0
+                          END
+                       )
   FROM 
     SaldoU  
   WHERE 
-    SaldoU.Rama = 'INV'
+    SaldoU.Rama IN ('INV','RESV')
   AND SaldoU.Empresa = ISNULL( @Empresa, SaldoU.Empresa )
   AND SaldoU.Sucursal = ISNULL( @Sucursal, SaldoU.Sucursal )
   AND SaldoU.Grupo = ISNULL( @Almacen, SaldoU.Grupo )
@@ -217,7 +235,9 @@ AS BEGIN
     AcumU_Existencia = acumU.Existencia,
     calc.AcumU_ExistenciaReal,
     SaldoU_Existencia = saldoU.Existencia,
-    calc.SaldoU_ExistenciaReal
+    calc.SaldoU_ExistenciaReal,
+    CantidadReservada = ISNULL(saldoU.CantidadReservada,0),
+    CantidadReservadaReal = ISNULL(calc.CantidadReservadaReal,0)
   FROM 
     #tmp_CUP_AuxiliarU auxU 
   JOIN #tmp_CUP_AcumU acumU ON acumU.Empresa = auxU.Empresa
@@ -257,8 +277,16 @@ AS BEGIN
                                 ),
                                 4,
                                 1
+                              ),
+      CantidadReservadaReal = ROUND
+                              (
+                                CONVERT ( 
+                                  DECIMAL(18,5),
+                                  ISNULL(SaldoU.Existencia,0)
+                                ),
+                                4,
+                                1
                               )
-
   ) calc
   WHERE 
     ISNULL(auxU.Existencia,0) <> 0

@@ -105,6 +105,8 @@ AS BEGIN
       AcumU_ExistenciaReal  DECIMAL(18,5) NOT NULL,
       SaldoU_Existencia     FLOAT NOT NULL,
       SaldoU_ExistenciaReal DECIMAL(18,5) NOT NULL,
+      CantidadReservada     FLOAT NOT NULL,
+      CantidadReservadaReal DECIMAL(18,5) NOT NULL,
       PRIMARY KEY ( 
                     Empresa,
                     Sucursal,
@@ -126,7 +128,9 @@ AS BEGIN
       AcumU_Existencia,
       AcumU_ExistenciaReal,
       SaldoU_Existencia,
-      SaldoU_ExistenciaReal
+      SaldoU_ExistenciaReal,
+      CantidadReservada,
+      CantidadReservadaReal
     )
     EXEC CUP_SPQ_RevisionExistenciasRealesU
       @Empresa,
@@ -214,6 +218,8 @@ AS BEGIN
       ExistenciaRealSL DECIMAL(18,5) NOT NULL,
       ExistenciaSLMayor FLOAT NOT NULL,
       ExistenciaSLMenor FLOAT NOT NULL,
+      CantidadReservada FLOAT NOT NULL,
+      CantdadReservadaReal DECIMAL(18,5) NOT NULL,
       RemanenteSU      FLOAT NOT NULL,
       Escenario        INT,
       PRIMARY KEY ( 
@@ -240,6 +246,8 @@ AS BEGIN
                ExistenciaSL,
                ExistenciaSLMayor,
                ExistenciaSLMenor,
+               CantidadReservada,
+               CantdadReservadaReal,
                RemanenteSU
             );
 
@@ -257,6 +265,8 @@ AS BEGIN
       ExistenciaRealSL,
       ExistenciaSLMayor,
       ExistenciaSLMenor,
+      CantidadReservada,
+      CantidadReservadaReal,
       RemanenteSU,
       Escenario
     )
@@ -273,6 +283,8 @@ AS BEGIN
       ExistenciaRealSL = ISNULL(serieLote.ExistenciaReal,0),
       ExistenciaSLMayor = ISNULL(serieLote.ExistenciaMayor,0),
       ExistenciaSLMenor = ISNULL(serieLote.ExistenciaMenor,0),
+      CantidadReservada = ISNULL(su.CantidadReservada,0),
+      CantidadReservadaReal = ISNULL(su.CantidadReservadaReal,0),
       RemanenteSU = ISNULL(calc.RemanenteSU,0),
       escenario.ID
     FROM 
@@ -315,13 +327,6 @@ AS BEGIN
                   AND sl.Articulo = su.Articulo
                   AND sl.SubCuenta = su.SubCuenta
                   ) serieLote
-    -- Cantidad Reservada
-   LEFT JOIN  SaldoU su_resv ON su_resv.Rama = 'RESV' 
-                            AND su_resv.Empresa = su.Empresa
-                            AND su_resv.Sucursal = su.Sucursal
-                            AND su_resv.Grupo = su.Almacen
-                            AND su_resv.Cuenta = su.Articulo
-                            AND ISNULL(su_resv.SubCuenta,'') = ISNULL(su.SubCuenta,'')
     -- calculados
     OUTER APPLY(
                 SELECT
@@ -409,12 +414,12 @@ AS BEGIN
                                    ISNULL(calc.Costo,0) -1
                                END
     -- Ignorar articulos con cantidad reservada.
-    AND ISNULL(su_resv.SaldoU,0) = CASE ISNULL(@IgnorarArtsConCantReserv,1)
-                                     WHEN 1 
-                                       THEN 0 
-                                     ELSE 
-                                       ISNULL(su_resv.SaldoU,0)
-                                   END;
+    AND ISNULL(su.CantidadReservada,0) = CASE ISNULL(@IgnorarArtsConCantReserv,1)
+                                           WHEN 1 
+                                             THEN 0 
+                                           ELSE 
+                                             ISNULL(su_resv.SaldoU,0)
+                                         END;
 
     -- Revisa que exista un escenario definido que la herramienta
     -- este preparada para trabajar.
