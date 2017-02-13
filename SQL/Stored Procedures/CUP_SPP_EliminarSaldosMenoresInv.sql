@@ -55,7 +55,7 @@ AS BEGIN
     @MonedaCosteo VARCHAR(10),
     @ProcesoID INT = 13, -- Este es el ID que identifica el tipo de proceso definido en CUP_Procesos
     @ID INT,
-    @CantidadSegura FLOAT = .01 -- Las Cantidades Seguras seran aquellas menores a esta.
+    @CantidadSegura FLOAT = .5 -- Las Cantidades Seguras seran aquellas menores a esta.
 
   SET NOCOUNT ON;
 
@@ -208,6 +208,9 @@ AS BEGIN
       ExistenciaRealSU DECIMAL(18,5) NOT NULL,
       ExistenciaSL     FLOAT NOT NULL,
       ExistenciaRealSL DECIMAL(18,5) NOT NULL,
+      ExistenciaSLMayor FLOAT NOT NULL,
+      ExistenciaSLMenor FLOAT NOT NULL,
+      RemanenteSU      FLOAT NOT NULL,
       Escenario        INT,
       PRIMARY KEY ( 
                     Empresa,
@@ -230,7 +233,10 @@ AS BEGIN
                SubCuenta,
                Costo,
                ExistenciaSU,
-               ExistenciaSL
+               ExistenciaSL,
+               ExistenciaSLMayor,
+               ExistenciaSLMenor,
+               RemanenteSU
             );
 
     INSERT INTO #tmp_CUP_SaldosMenoresSU
@@ -245,7 +251,10 @@ AS BEGIN
       ExistenciaRealSU,
       ExistenciaSL,
       ExistenciaRealSL,
-      EScenario
+      ExistenciaSLMayor,
+      ExistenciaSLMenor,
+      RemanenteSU,
+      Escenario
     )
     SELECT 
       su.Empresa,
@@ -258,6 +267,9 @@ AS BEGIN
       su.SaldoU_ExistenciaReal,
       ExistenciaSL = ISNULL(serielote.Existencia,0),
       ExistenciaRealSL = ISNULL(serieLote.ExistenciaReal,0),
+      ExistenciaSLMayor = ISNULL(serieLote.ExistenciaMayor,0),
+      ExistenciaSLMenor = ISNULL(serieLote.ExistenciaMenor,0),
+      RemanenteSU = ISNULL(calc.RemanenteSU,0),
       escenario.ID
     FROM 
       #tmp_CUP_ArtExistencias su
@@ -275,7 +287,7 @@ AS BEGIN
                     ExistenciaMenor = SUM
                                       (
                                         CASE
-                                          WHEN ISNULL(sl.Existencia,0) < @CantidadSegura THEN 
+                                          WHEN ABS(ISNULL(sl.Existencia,0)) > @CantidadSegura THEN 
                                             ISNULL(sl.Existencia,0)
                                           ELSE 
                                             0
@@ -284,7 +296,7 @@ AS BEGIN
                     ExistenciaMayor = SUM
                                       (
                                         CASE
-                                          WHEN ISNULL(sl.Existencia,0) <= @CantidadSegura THEN 
+                                          WHEN ABS(ISNULL(sl.Existencia,0)) <= @CantidadSegura THEN 
                                             ISNULL(sl.Existencia,0)
                                           ELSE 
                                             0
@@ -301,7 +313,8 @@ AS BEGIN
                   ) serieLote
     -- calculados
     OUTER APPLY(
-                SELECT 
+                SELECT
+                  RemanenteSU = ISNULL(su.SaldoU_Existencia,0) - ISNULL(serielote.ExistenciaMayor,0),
                   Costo = CASE -- Costo. ** Basarse en lo que hace el  spVerCosto ** 
                             WHEN art.MonedaCosto = @MonedaCosteo THEN  
                                 ROUND(ISNULL(ac.CostoPromedio, 0),4)
@@ -321,41 +334,50 @@ AS BEGIN
                                   ,4) 
                                 * ROUND(@TipoCambio,4)
                               END 
-                          END,
-                  RemanenteSU = ISNULL(su.SaldoU_Existencia,0) - ISNULL(serielote.ExistenciaMayor,0)   
+                          END
                ) calc
+    -- Saldos Menores
+    OUTER APPLY( 
+                 SELECT 
+                  ConSaldoUMenor =  CASE 
+                                      WHEN ABS(ISNULL(su.SaldoU_Existencia,0)) < CASE art.Unidad
+                                                                                   WHEN 'KGS' THEN 
+                                                                                     1
+                                                                                   ELSE 
+                                                                                     .5
+                                                                                 END
+                                        THEN 1 
+                                      ELSE 
+                                        0
+                                    END,
+                  ConSaldoSLMenor  = CASE
+                                       WHEN ISNULL(serieLote.ExistenciaMenor,0) <> 0 
+                                         AND ISNULL(calc.RemanenteSu,0) > 0
+                                         AND ISNULL(calc.RemanenteSu,0) >= ISNULL(serieLote.ExistenciaMenor,0)
+                                        THEN 1
+                                       ELSE 
+                                         0
+                                     END
+               ) saldos_menores
     -- Escenario
     OUTER APPLY(
                   SELECT 
                     ID =  CASE 
-                            WHEN
-                              ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
-                            AND  (   
-                                  -- Donde SaldoU y ExsistenciaSl ( o art tip normal) 
-                                  --  sean iguales y menores  a 1.
-                                  ( 
-                                      ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
-                                  AND (
-                                        ISNULL(su.SaldoU_ExistenciaReal,0) =  ISNULL(serieLote.ExistenciaReal,0)
-                                      OR dbo.fnRenglonTipo(art.Tipo) NOT IN ('S','L')
-                                      )
-                                  ) 
-                                  -- Los saldos chiquititos ( menor a 4 decimales ) se pueden sacar sin problema. 
-                              OR (
-                                    ABS(ISNULL(su.SaldoU_Existencia,0)) < @CantidadSegura
-                                  AND ABS(ISNULL(serielote.Existencia,0)) < @CantidadSegura
-                                  )
-                              )
-                              -- Los articulos que no llevan su unidad en KGS ( ej. los perfiles! )
-                              -- solo deben considerarse como seguros cuando su saldoU >= .05
-                            AND NOT( 
-                                      ISNULL(art.Unidad,'') <> 'Kgs'
-                                    AND ISNULL(su.SaldoU_Existencia,0) >= .05
+                            WHEN( 
+                                    ISNULL(saldos_menores.ConSaldoUMenor,0) = 1
+                                AND (
+                                      ISNULL(su.SaldoU_ExistenciaReal,0) =  ISNULL(serieLote.ExistenciaReal,0)
+                                    OR dbo.fnRenglonTipo(art.Tipo) NOT IN ('S','L')
                                     )
+                                ) 
+                                -- Los saldos chiquititos se pueden sacar sin problema. 
+                            OR (
+                                  ABS(ISNULL(su.SaldoU_Existencia,0)) < @CantidadSegura
+                                AND ABS(ISNULL(serielote.Existencia,0)) < @CantidadSegura
+                                )
                               THEN  1 -- Seguro
-                            WHEN ISNULL(serieLote.ExistenciaMenor,0) <> 0 
-                             AND ISNULL(calc.RemanenteSu,0) >= ISNULL(serieLote.ExistenciaMenor,0) THEN 
-                                2 -- Existencia Menor SL
+                            WHEN ISNULL(saldos_menores.ConSaldoSLMenor,0) = 1
+                              THEN 2 -- Saldos menores serielote
                             ELSE
                               0 -- Desconocido
                           END   
@@ -363,6 +385,10 @@ AS BEGIN
     WHERE 
       art.Tipo IN ('Serie','Lote','Normal')
     AND ISNULL(su.SaldoU_Existencia,0) <> 0
+    AND (
+          ISNULL(saldos_menores.ConSaldoUMenor,0) = 1 
+        OR ISNULL(saldos_menores.ConSaldoSLMenor,0) = 1
+        )
     -- Si @EvitarError20101 = 1, evita incluir articulos
     -- con costo negativo.
     AND ISNULL(calc.Costo,0) > CASE ISNULL(@EvitarError20101,1)
