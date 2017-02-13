@@ -324,7 +324,7 @@ AS BEGIN
                               -- Los articulos que no llevan su unidad en KGS ( ej. los perfiles! )
                               -- solo deben considerarse como seguros cuando su saldoU >= .05
                             AND NOT( 
-                                      ISNULL(a.Undidad,'') <> 'Kgs'
+                                      ISNULL(art.Unidad,'') <> 'Kgs'
                                     AND ISNULL(su.SaldoU_Existencia,0) >= .05
                                    )
                               THEN  1 -- Seguro
