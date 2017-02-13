@@ -45,7 +45,8 @@ CREATE PROCEDURE dbo.CUP_SPP_EliminarSaldosMenoresInv
   @Subcuenta VARCHAR(20) = NULL,
   @EnSilencio BIT = 1,
   @EvitarError20101 BIT = 1,
-  @CorrerSinAfectar BIT = 0 
+  @CorrerSinAfectar BIT = 0,
+  @IgnorarArtsConCantReserv BIT = 1 
 AS BEGIN 
 
   DECLARE
@@ -311,6 +312,13 @@ AS BEGIN
                   AND sl.Articulo = su.Articulo
                   AND sl.SubCuenta = su.SubCuenta
                   ) serieLote
+    -- Cantidad Reservada
+   LEFT JOIN  SaldoU su_resv ON su_resv.Rama = 'RESV' 
+                            AND su_resv.Empresa = su.Empresa
+                            AND su_resv.Sucursal = su.Sucursal
+                            AND su_resv.Grupo = su.Grupo
+                            AND su_resv.Cuenta = su.Articulo
+                            AND ISNULL(su_resv.SubCuenta,'') = ISNULL(su.SubCuenta,'')
     -- calculados
     OUTER APPLY(
                 SELECT
@@ -396,7 +404,14 @@ AS BEGIN
                                    0
                                  ELSE 
                                    ISNULL(calc.Costo,0) -1
-                               END;
+                               END
+    -- Ignorar articulos con cantidad reservada.
+    AND ISNULL(su_resv.SaldoU,0) = CASE ISNULL(@IgnorarArtConCantReserv,1)
+                                     WHEN 1 
+                                       THEN 0 
+                                     ELSE 
+                                       ISNULL(su_resv.SaldoU,0)
+                                   END;
 
     -- Revisa que exista un escenario definido que la herramienta
     -- este preparada para trabajar.
