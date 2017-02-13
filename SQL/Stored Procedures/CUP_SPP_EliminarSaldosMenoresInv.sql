@@ -44,7 +44,8 @@ CREATE PROCEDURE dbo.CUP_SPP_EliminarSaldosMenoresInv
   @Articulo CHAR(20) = NULL,
   @Subcuenta VARCHAR(20) = NULL,
   @EnSilencio BIT = 1,
-  @EvitarError20101 BIT = 1
+  @EvitarError20101 BIT = 1,
+  @CorrerSinAfectar BIT = 0 
 AS BEGIN 
 
   DECLARE
@@ -257,7 +258,7 @@ AS BEGIN
       su.SaldoU_ExistenciaReal,
       ExistenciaSL = ISNULL(serielote.Existencia,0),
       ExistenciaRealSL = ISNULL(serieLote.ExistenciaReal,0),
-      calc.Escenario
+      escenario.ID
     FROM 
       #tmp_CUP_ArtExistencias su
     JOIN art ON su.Articulo = art.Articulo
@@ -270,7 +271,25 @@ AS BEGIN
     OUTER APPLY (
                   SELECT
                     Existencia = SUM(ISNULL(sl.Existencia,0)),
-                    ExistenciaReal = SUM(ISNULL(sl.ExistenciaReal,0))
+                    ExistenciaReal = SUM(ISNULL(sl.ExistenciaReal,0)),
+                    ExistenciaMenor = SUM
+                                      (
+                                        CASE
+                                          WHEN ISNULL(sl.Existencia,0) < @CantidadSegura THEN 
+                                            ISNULL(sl.Existencia,0)
+                                          ELSE 
+                                            0
+                                        END
+                                      ),
+                    ExistenciaMayor = SUM
+                                      (
+                                        CASE
+                                          WHEN ISNULL(sl.Existencia,0) <= @CantidadSegura THEN 
+                                            ISNULL(sl.Existencia,0)
+                                          ELSE 
+                                            0
+                                        END
+                                      )     
                   FROM
                     #tmp_CUP_ArtExistenciasSL sl  
                   WHERE 
@@ -303,15 +322,21 @@ AS BEGIN
                                 * ROUND(@TipoCambio,4)
                               END 
                           END,
-                  Escenario =  CASE 
+                  RemanenteSU = ISNULL(su.SaldoU_Existencia,0) - ISNULL(serielote.ExistenciaMayor,0)   
+               ) calc
+    -- Escenario
+    OUTER APPLY(
+                  SELECT 
+                    ID =  CASE 
                             WHEN
-                              (   
+                              ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
+                            AND  (   
                                   -- Donde SaldoU y ExsistenciaSl ( o art tip normal) 
                                   --  sean iguales y menores  a 1.
                                   ( 
                                       ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
                                   AND (
-                                        ISNULL(serieLote.Existencia,0) = ISNULL(su.SaldoU_Existencia,0)
+                                        ISNULL(su.SaldoU_ExistenciaReal,0) =  ISNULL(serieLote.ExistenciaReal,0)
                                       OR dbo.fnRenglonTipo(art.Tipo) NOT IN ('S','L')
                                       )
                                   ) 
@@ -326,16 +351,18 @@ AS BEGIN
                             AND NOT( 
                                       ISNULL(art.Unidad,'') <> 'Kgs'
                                     AND ISNULL(su.SaldoU_Existencia,0) >= .05
-                                   )
+                                    )
                               THEN  1 -- Seguro
+                            WHEN ISNULL(serieLote.ExistenciaMenor,0) <> 0 
+                             AND ISNULL(calc.RemanenteSu,0) >= ISNULL(serieLote.ExistenciaMenor,0) THEN 
+                                2 -- Existencia Menor SL
                             ELSE
                               0 -- Desconocido
-                          END       
-               ) calc
+                          END   
+               ) escenario
     WHERE 
       art.Tipo IN ('Serie','Lote','Normal')
     AND ISNULL(su.SaldoU_Existencia,0) <> 0
-    AND ABS(ISNULL(su.SaldoU_Existencia,0)) < 1
     -- Si @EvitarError20101 = 1, evita incluir articulos
     -- con costo negativo.
     AND ISNULL(calc.Costo,0) > CASE ISNULL(@EvitarError20101,1)
@@ -366,7 +393,8 @@ AS BEGIN
       EXEC CUP_SPI_EliminarSaldosMenoresInv_Seguros @ProcesoID, @ID
 
       -- Afecta los Ajustes Menores generados por este proceso.
-      EXEC CUP_SPP_EliminarSaldosMenoresInv_AfectarAjustes @ID
+      IF ISNULL(@CorrerSinAfectar,0) = 0
+        EXEC CUP_SPP_EliminarSaldosMenoresInv_AfectarAjustes @ID
 
       -- Reporta el resultado del proceso.
       IF ISNULL(@EnSilencio,0) = 0        

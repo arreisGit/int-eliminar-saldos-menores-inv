@@ -12,6 +12,11 @@ VALUES
   'SEGURO',
   63527,
   GETDATE()
+),
+(
+  'SALDOS MENORES SL',
+  63527,
+  GETDATE()
 )
 
 SET IDENTITY_INSERT dbo.CUP_EliminarSaldosMenoresInv_Escenarios ON;  
