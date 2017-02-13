@@ -183,7 +183,7 @@ AS BEGIN
       Existencia,
       ExistenciaReal
     )
-    EXEC CUP_SPQ_RevisionExistenciasRealesUSL 
+    EXEC CUP_SPQ_RevisionExistenciasRealesSL 
       @Empresa,
       @Sucursal,
       @Almacen,

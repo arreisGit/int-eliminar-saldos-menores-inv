@@ -35,7 +35,7 @@ GO
 ============================================= */
 
 
-CREATE PROCEDURE dbo.CUP_SPQ_RevisionExistenciasRealesUSL
+CREATE PROCEDURE dbo.CUP_SPQ_RevisionExistenciasRealesSL
   @Empresa CHAR(5) = NULL,
   @Sucursal INT = NULL,
   @Almacen CHAR(10) = NULL,
