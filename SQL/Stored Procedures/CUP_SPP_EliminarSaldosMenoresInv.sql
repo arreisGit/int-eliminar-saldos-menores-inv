@@ -26,7 +26,10 @@ GO
             @Almacen = NULL,
             @Articulo = NULL,
             @Subcuenta = NULL,
-            @EnSilencio = 0
+            @EnSilencio = 0,
+            @EvitarError20101 = 1,
+            @CorrerSinAfectar = 0,
+            @IgnorarArtsConCantReserv = 0 
 
   ** Nota: Cuando se quiera filtrar especificamente por un
   articulo sin subcuenta, se debe usar @Subcuenta = '' y no 
@@ -316,7 +319,7 @@ AS BEGIN
    LEFT JOIN  SaldoU su_resv ON su_resv.Rama = 'RESV' 
                             AND su_resv.Empresa = su.Empresa
                             AND su_resv.Sucursal = su.Sucursal
-                            AND su_resv.Grupo = su.Grupo
+                            AND su_resv.Grupo = su.Almacen
                             AND su_resv.Cuenta = su.Articulo
                             AND ISNULL(su_resv.SubCuenta,'') = ISNULL(su.SubCuenta,'')
     -- calculados
