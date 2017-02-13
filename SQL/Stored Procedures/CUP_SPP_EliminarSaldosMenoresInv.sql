@@ -406,7 +406,7 @@ AS BEGIN
                                    ISNULL(calc.Costo,0) -1
                                END
     -- Ignorar articulos con cantidad reservada.
-    AND ISNULL(su_resv.SaldoU,0) = CASE ISNULL(@IgnorarArtConCantReserv,1)
+    AND ISNULL(su_resv.SaldoU,0) = CASE ISNULL(@IgnorarArtsConCantReserv,1)
                                      WHEN 1 
                                        THEN 0 
                                      ELSE 
