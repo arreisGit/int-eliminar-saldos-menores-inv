@@ -29,7 +29,6 @@ AS BEGIN
   SELECT
     proceso.ID,
     proceso.Usuario,
-    proceso.Fecha,
     proceso_ajustes.Modulo,
     proceso_ajustes.ModuloId,
     proceso_ajustes.Escenario,
@@ -39,7 +38,7 @@ AS BEGIN
     ab.Base,
     ab.GenerarMov,
     ab.Usuario,
-    ab.FechaRegistro,
+    FechaRegistro = CONVERT( VARCHAR(MAX), ab.FechaRegistro, 121),
     ab.Ok,
     ab.OkRef,
     MensajeDesc =  m.Descripcion
