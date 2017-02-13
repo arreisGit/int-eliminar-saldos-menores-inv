@@ -284,24 +284,24 @@ AS BEGIN
                   SELECT
                     Existencia = SUM(ISNULL(sl.Existencia,0)),
                     ExistenciaReal = SUM(ISNULL(sl.ExistenciaReal,0)),
-                    ExistenciaMenor = SUM
-                                      (
-                                        CASE
-                                          WHEN ABS(ISNULL(sl.Existencia,0)) > @CantidadSegura THEN 
-                                            ISNULL(sl.Existencia,0)
-                                          ELSE 
-                                            0
-                                        END
-                                      ),
                     ExistenciaMayor = SUM
                                       (
                                         CASE
-                                          WHEN ABS(ISNULL(sl.Existencia,0)) <= @CantidadSegura THEN 
+                                          WHEN ABS(ISNULL(sl.Existencia,0)) >= @CantidadSegura THEN 
                                             ISNULL(sl.Existencia,0)
                                           ELSE 
                                             0
                                         END
-                                      )     
+                                      ), 
+                    ExistenciaMenor = SUM
+                                      (
+                                        CASE
+                                          WHEN ABS(ISNULL(sl.Existencia,0)) < @CantidadSegura THEN 
+                                            ISNULL(sl.Existencia,0)
+                                          ELSE 
+                                            0
+                                        END
+                                      )
                   FROM
                     #tmp_CUP_ArtExistenciasSL sl  
                   WHERE 
