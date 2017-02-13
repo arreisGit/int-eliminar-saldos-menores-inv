@@ -219,7 +219,7 @@ AS BEGIN
       ExistenciaSLMayor FLOAT NOT NULL,
       ExistenciaSLMenor FLOAT NOT NULL,
       CantidadReservada FLOAT NOT NULL,
-      CantdadReservadaReal DECIMAL(18,5) NOT NULL,
+      CantidadReservadaReal DECIMAL(18,5) NOT NULL,
       RemanenteSU      FLOAT NOT NULL,
       Escenario        INT,
       PRIMARY KEY ( 
@@ -247,7 +247,7 @@ AS BEGIN
                ExistenciaSLMayor,
                ExistenciaSLMenor,
                CantidadReservada,
-               CantdadReservadaReal,
+               CantidadReservadaReal,
                RemanenteSU
             );
 
@@ -418,7 +418,7 @@ AS BEGIN
                                            WHEN 1 
                                              THEN 0 
                                            ELSE 
-                                             ISNULL(su_resv.SaldoU,0)
+                                             ISNULL(su.CantidadReservada,0)
                                          END;
 
     -- Revisa que exista un escenario definido que la herramienta
