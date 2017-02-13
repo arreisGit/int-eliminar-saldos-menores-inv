@@ -59,8 +59,6 @@ AS BEGIN
     proceso_ajustes.ModuloID,
     ab.ID ASC
 
-  SELECT * from #tmp_CUP_SaldosMenoresSU
-
   /*
   -- Detalle Ajustes
   SELECT
