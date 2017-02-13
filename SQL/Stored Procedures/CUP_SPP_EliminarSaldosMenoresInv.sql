@@ -373,6 +373,18 @@ AS BEGIN
         EXEC CUP_SPQ_EliminarSaldosMenoresInv_ResultadoDelProceso @ID
 
     END
+
+    -- Temp
+    SELECT 
+      su.*,
+      a.Unidad,
+      a.Grupo,
+      a.Familia,
+      a.Categoria
+    from
+      #tmp_CUP_SaldosMenoresSU su
+    JOIN art a ON a.Articulo = su.Articulo
+    --
     
     -- Libera el bloqueo del procedimiento
     EXECUTE sp_releaseapplock @Resource = @LockName
