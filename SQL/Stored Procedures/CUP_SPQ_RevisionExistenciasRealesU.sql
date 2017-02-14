@@ -282,7 +282,7 @@ AS BEGIN
                               (
                                 CONVERT ( 
                                   DECIMAL(18,5),
-                                  ISNULL(SaldoU.Existencia,0)
+                                  ISNULL(SaldoU.CantidadReservada,0)
                                 ),
                                 4,
                                 1
