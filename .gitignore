@@ -1,10 +1,9 @@
-/Ejercicios/*
-/Ejercicios
-/Deprecated
-/Deprecated/*
-/backup
-/backup/*
-/Reporteria
-/Reporteria/*
-/Corridas
-/Corridas/*
+# Ignore all
+*
+
+# Unignore SQL And Documentation folders
+!SQL/
+!Documentacion!
+
+# Unignore Escenarios.md
+!Escenarios.md
