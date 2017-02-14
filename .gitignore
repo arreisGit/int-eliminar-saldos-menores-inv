@@ -3,7 +3,9 @@
 
 # Unignore SQL And Documentation folders
 !SQL/
-!Documentacion!
+!SQL/*
+!Documentacion/
+!Documentacion/*
 
 # Unignore Escenarios.md
 !Escenarios.md
