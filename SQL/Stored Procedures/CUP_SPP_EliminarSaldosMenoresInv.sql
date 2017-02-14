@@ -139,7 +139,9 @@ AS BEGIN
       @Articulo,
       @Subcuenta
 
-    -- Todos los articulos con saldoU en 0 deberian tener suserie lote en 0 tambien
+    /* REVISION: ¿ Que pasa con las existencias de los series lote,
+    cuando el saldoU se va a transito ?
+    --Todos los articulos con saldoU en 0 deberian tener suserie lote en 0 tambien
     UPDATE sl
     SET 
       sl.Existencia = 0,
@@ -154,6 +156,7 @@ AS BEGIN
     WHERE 
       ISNULL(su.SaldoU_Existencia,0) = 0 
     AND ISNULL(sl.Existencia,0) <> 0
+    */
 
     -- OBtener las existencia SerieLote,
     IF OBJECT_ID('tempdb..#tmp_CUP_ArtExistenciasSL') IS NOT NULL 
@@ -472,22 +475,13 @@ AS BEGIN
 
       -- Reporta el resultado del proceso.
       IF ISNULL(@EnSilencio,0) = 0        
-        EXEC CUP_SPQ_EliminarSaldosMenoresInv_ResultadoDelProceso @ID
+      BEGIN
+        EXEC CUP_SPQ_EliminarSaldosMenoresInv_ResultadoDelProceso @ID    
+      END
 
     END
 
-    -- Temp
-    SELECT 
-      su.*,
-      a.Unidad,
-      a.Grupo,
-      a.Familia,
-      a.Categoria
-    from
-      #tmp_CUP_SaldosMenoresSU su
-    JOIN art a ON a.Articulo = su.Articulo
-    --
-    
+
     -- Libera el bloqueo del procedimiento
     EXECUTE sp_releaseapplock @Resource = @LockName
   END
