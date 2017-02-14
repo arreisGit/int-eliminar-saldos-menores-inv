@@ -20,3 +20,8 @@ BEGIN
     GETDATE(),
     63527
 END
+
+SELECT 
+  *
+FROM 
+  CUP_Procesos

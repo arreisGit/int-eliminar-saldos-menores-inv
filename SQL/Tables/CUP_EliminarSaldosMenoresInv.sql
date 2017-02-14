@@ -19,7 +19,16 @@ CREATE TABLE dbo.CUP_EliminarSaldosMenoresInv
   ID INT PRIMARY KEY NOT NULL IDENTITY(1,1), 
   Usuario  CHAR(10) NOT NULL,
   Fecha DATETIME NOT NULL
-        CONSTRAINT [DF_CUP_EliminarSaldosMenoresInv_Fecha] DEFAULT GETDATE()
+        CONSTRAINT [DF_CUP_EliminarSaldosMenoresInv_Fecha] DEFAULT GETDATE(),
+  Empresa CHAR(5),
+  Sucursal INT NULL,
+  Almacen CHAR(10) NULL,
+  Articulo CHAR(20) NULL,
+  Subcuenta VARCHAR(20) NULL,
+  EnSilencio BIT NOT NULL,
+  EvitarError20101 BIT NOT NULL,
+  CorrerSinAfectar BIT NOT NULL ,
+  IgnorarArtsConCantReserv BIT NOT NULL 
 ) 
 
 
@@ -27,12 +36,30 @@ CREATE NONCLUSTERED INDEX [IX_CUP_EliminarSaldosMenoresInv_Fecha]
 ON [dbo].[CUP_EliminarSaldosMenoresInv] ( Fecha )
 INCLUDE ( 
            ID,
-           Usuario
+           Usuario,
+           Empresa,
+           Sucursal,
+           Almacen,
+           Articulo,
+           Subcuenta,
+           EnSilencio,
+           EvitarError20101,
+           CorrerSinAfectar,
+           IgnorarArtsConCantReserv
         )
 
 CREATE NONCLUSTERED INDEX [IX_CUP_EliminarSaldosMenoresInv_Usuario]
 ON [dbo].[CUP_EliminarSaldosMenoresInv] ( Usuario )
 INCLUDE ( 
            ID,
-           Fecha
+           Fecha,
+           Empresa,
+           Sucursal,
+           Almacen,
+           Articulo,
+           Subcuenta,
+           EnSilencio,
+           EvitarError20101,
+           CorrerSinAfectar,
+           IgnorarArtsConCantReserv
         )

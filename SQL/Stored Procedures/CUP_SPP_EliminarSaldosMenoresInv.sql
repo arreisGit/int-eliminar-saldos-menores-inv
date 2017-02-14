@@ -432,8 +432,32 @@ AS BEGIN
     BEGIN
 
       -- Guardamos un registro del proceso de eliminacion de saldos menores.
-      INSERT INTO CUP_EliminarSaldosMenoresInv ( Usuario )
-      VALUES ( @Usuario );
+      INSERT INTO CUP_EliminarSaldosMenoresInv
+      (
+        Usuario,
+        Empresa,
+        Sucursal,
+        Almacen,
+        Articulo,
+        Subcuenta,
+        EnSilencio,
+        EvitarError20101,
+        CorrerSinAfectar,
+        IgnorarArtsConCantReserv
+      )
+      VALUES
+      (
+        @Usuario,
+        @Empresa,
+        @Sucursal,
+        @Almacen,
+        @Articulo,
+        @Subcuenta,
+        ISNULL(@EnSilencio,1),
+        ISNULL(@EvitarError20101,1),
+        ISNULL(@CorrerSinAfectar,0),
+        ISNULL(@IgnorarArtsConCantReserv,1)
+      );
 
       SET @ID = SCOPE_IDENTITY()
 
